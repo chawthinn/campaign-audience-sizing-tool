@@ -262,9 +262,7 @@ const IntersectionView: React.FC<IntersectionViewProps> = ({
                     <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
                     <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
                     <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
-                        {preview
-                            ? <>Will return: Users found in <tspan fontWeight="bold" fill="#374151">both</tspan> lists</>
-                            : `Users in both lists: ${intersectionCount.toLocaleString()}`}
+                        {preview ? 'Will return: A ∩ B' : `Users in both lists: ${intersectionCount.toLocaleString()}`}
                     </text>
                 </svg>
             </div>
