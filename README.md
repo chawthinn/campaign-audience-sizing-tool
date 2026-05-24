@@ -1,3 +1,12 @@
+---
+title: CampaignAudienceSizingTool
+emoji: 📊
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
 # 🎯 Campaign Audience Sizing Tool
 
 A web-based campaign segment sizing tool for marketing teams to estimate eligible audience counts from large datasets in real time. This tool enables users to upload and instantly view the intersection count between two large CSV files (3M+ rows), replacing slow Excel workflows.
