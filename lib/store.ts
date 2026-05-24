@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 
+export type AudienceAction = 'intersection' | 'merger' | 'exclusion'
+export type ExclusionDirection = 'a_minus_b' | 'b_minus_a'
+
 export interface AudienceState {
+    // Operation mode
+    action: AudienceAction
+    switchAction: (action: AudienceAction) => void
+    exclusionDirection: ExclusionDirection
+    setExclusionDirection: (direction: ExclusionDirection) => void
+
     // File state
     fileA: File | null
     fileB: File | null
@@ -8,7 +17,8 @@ export interface AudienceState {
     setFileB: (file: File | null) => void
 
     // Results state
-    intersectionCount: number
+    resultCount: number        // main result count (intersection or union)
+    intersectionCount: number  // always the inner-join overlap count
     setACount: number
     setBCount: number
     intersectionData: Array<Record<string, any>>
@@ -17,6 +27,7 @@ export interface AudienceState {
     processingElapsedSeconds: number
     columnDataTypes: Record<string, string>
     setResults: (counts: {
+        resultCount: number
         intersectionCount: number
         setACount: number
         setBCount: number
@@ -51,14 +62,8 @@ export interface AudienceState {
     reset: () => void
 }
 
-export const useAudienceStore = create<AudienceState>((set) => ({
-    // Initial file state
-    fileA: null,
-    fileB: null,
-    setFileA: (file) => set({ fileA: file }),
-    setFileB: (file) => set({ fileB: file }),
-
-    // Initial results state
+const EMPTY_RESULTS = {
+    resultCount: 0,
     intersectionCount: 0,
     setACount: 0,
     setBCount: 0,
@@ -67,7 +72,25 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     downloadUrl: '',
     processingElapsedSeconds: 0,
     columnDataTypes: {},
+}
+
+export const useAudienceStore = create<AudienceState>((set) => ({
+    // Operation mode
+    action: 'intersection',
+    switchAction: (action) => set({ action, ...EMPTY_RESULTS }),
+    exclusionDirection: 'a_minus_b',
+    setExclusionDirection: (direction) => set({ exclusionDirection: direction, ...EMPTY_RESULTS }),
+
+    // Initial file state
+    fileA: null,
+    fileB: null,
+    setFileA: (file) => set({ fileA: file }),
+    setFileB: (file) => set({ fileB: file }),
+
+    // Initial results state
+    ...EMPTY_RESULTS,
     setResults: (counts) => set({
+        resultCount: counts.resultCount,
         intersectionCount: counts.intersectionCount,
         setACount: counts.setACount,
         setBCount: counts.setBCount,
@@ -103,14 +126,7 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         set({
             fileA: null,
             fileB: null,
-            intersectionCount: 0,
-            setACount: 0,
-            setBCount: 0,
-            intersectionData: [],
-            headers: [],
-            downloadUrl: '',
-            processingElapsedSeconds: 0,
-            columnDataTypes: {},
+            ...EMPTY_RESULTS,
             isProcessing: false,
             progress: 0,
             searchQuery: '',
