@@ -5,6 +5,7 @@ import json
 import os
 import uuid
 import time
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -344,45 +345,104 @@ async def preview(
         404: {'description': 'Result not found'},
     },
 )
-async def download_file(job_id: str, columns: str = '') -> FileResponse:
+async def download_file(job_id: str, columns: str = '', split: str = '') -> FileResponse:
     job_dir = JOBS_DIR / job_id
     base_result_path = job_dir / 'result.csv'
 
     if not base_result_path.exists():
         raise HTTPException(status_code=404, detail='Result not found. Please reprocess the files.')
 
-    serve_path = base_result_path
+    action_txt = job_dir / 'action.txt'
+    action = action_txt.read_text().strip() if action_txt.exists() else 'intersection'
+    created_at = datetime.fromtimestamp(base_result_path.stat().st_mtime)
+    stamp = created_at.strftime('%Y%m%d_%H%M%S')
 
-    # Optional column projection
+    all_headers = pl.read_csv(str(base_result_path), n_rows=0, encoding='utf8-lossy').columns
+
+    # Parse columns param
+    use_columns: list[str] | None = None
     if columns:
         col_list = [c.strip() for c in columns.split(',') if c.strip()]
         if not col_list:
             raise HTTPException(status_code=400, detail='columns must contain at least one column')
-
-        all_headers = pl.read_csv(str(base_result_path), n_rows=0, encoding='utf8-lossy').columns
         invalid = [c for c in col_list if c not in all_headers]
         if invalid:
             raise HTTPException(status_code=400, detail=f'Unknown columns: {", ".join(invalid)}')
-
-        # Only build a filtered file if the user actually picked a subset
         if col_list != all_headers:
-            col_hash = hashlib.md5(','.join(col_list).encode('utf-8')).hexdigest()[:10]
+            use_columns = col_list
+
+    # Parse split param
+    split_parts: list[int] = []
+    if split:
+        try:
+            split_parts = [int(x.strip()) for x in split.split(',') if x.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail='split must be comma-separated integers, e.g. "50,50"')
+        if not split_parts or any(p <= 0 for p in split_parts) or sum(split_parts) != 100:
+            raise HTTPException(status_code=400, detail='split percentages must be positive and sum to 100')
+
+    # --- No split → serve a CSV (full or column-filtered) ---
+    if not split_parts:
+        serve_path = base_result_path
+        if use_columns is not None:
+            col_hash = hashlib.md5(','.join(use_columns).encode('utf-8')).hexdigest()[:10]
             filtered_path = job_dir / f'result_{col_hash}.csv'
             if not filtered_path.exists():
                 (pl.scan_csv(str(base_result_path), encoding='utf8-lossy')
-                    .select(col_list)
+                    .select(use_columns)
                     .collect()
                     .write_csv(str(filtered_path)))
             serve_path = filtered_path
+        return FileResponse(
+            path=str(serve_path),
+            filename=f'{action}_{stamp}.csv',
+            media_type='text/csv',
+        )
 
-    action_txt = job_dir / 'action.txt'
-    action = action_txt.read_text().strip() if action_txt.exists() else 'intersection'
+    # --- Split → build a ZIP with one CSV per group ---
+    # Bumped v2: changed inner filename scheme to semantic names
+    cache_key = f"v2|split={'-'.join(map(str, split_parts))}|cols={','.join(use_columns) if use_columns else 'all'}"
+    cache_hash = hashlib.md5(cache_key.encode('utf-8')).hexdigest()[:10]
+    zip_path = job_dir / f'split_{cache_hash}.zip'
 
-    created_at = datetime.fromtimestamp(serve_path.stat().st_mtime)
-    stamp = created_at.strftime('%Y%m%d_%H%M%S')
+    if not zip_path.exists():
+        lf = pl.scan_csv(str(base_result_path), encoding='utf8-lossy')
+        if use_columns is not None:
+            lf = lf.select(use_columns)
+        df = lf.collect()
+
+        # Deterministic shuffle: same job + same params -> same split on every re-download
+        seed = int(cache_hash, 16) % (2**31 - 1)
+        df = df.sample(fraction=1.0, shuffle=True, seed=seed)
+
+        inner_names = _split_filenames(split_parts)
+        total = len(df)
+        offset = 0
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for i, pct in enumerate(split_parts):
+                if i == len(split_parts) - 1:
+                    chunk = df.slice(offset)  # last group absorbs rounding remainder
+                else:
+                    size = (total * pct) // 100
+                    chunk = df.slice(offset, size)
+                    offset += size
+                csv_bytes = chunk.write_csv()
+                zf.writestr(inner_names[i], csv_bytes)
 
     return FileResponse(
-        path=str(serve_path),
-        filename=f'{action}_{stamp}.csv',
-        media_type='text/csv',
+        path=str(zip_path),
+        filename=f'{action}_{stamp}.zip',
+        media_type='application/zip',
     )
+
+
+def _split_filenames(parts: list[int]) -> list[str]:
+    """Map a split spec to semantic CSV filenames inside the ZIP."""
+    if parts == [50, 50]:
+        return ['segment_a.csv', 'segment_b.csv']
+    if parts == [80, 20]:
+        return ['target_group.csv', 'control_group.csv']
+    if parts == [70, 30]:
+        return ['segment_a.csv', 'segment_b.csv']
+    # Fallback: segment_a.csv, segment_b.csv, segment_c.csv, ...
+    return [f'segment_{chr(ord("a") + i)}.csv' for i in range(len(parts))]

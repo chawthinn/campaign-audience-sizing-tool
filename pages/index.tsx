@@ -218,7 +218,7 @@ export default function Home() {
                                         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
                                     >
                                         <Settings className="w-4 h-4" />
-                                        Filters &amp; Export
+                                        Export Audience
                                     </button>
                                 )}
                             </div>
@@ -244,7 +244,7 @@ export default function Home() {
                     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
                         <div className="bg-white rounded-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto smooth-shadow">
                             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                                <h2 className="text-lg font-bold text-gray-900">Filters &amp; Export</h2>
+                                <h2 className="text-lg font-bold text-gray-900">Export Audience</h2>
                                 <button
                                     onClick={() => setShowFilterModal(false)}
                                     className="text-gray-500 hover:text-gray-700 text-2xl leading-none"

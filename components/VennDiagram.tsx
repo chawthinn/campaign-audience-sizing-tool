@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAudienceStore, type ExclusionDirection } from '@/lib/store'
 import { ArrowLeftRight } from 'lucide-react'
 
@@ -69,12 +69,13 @@ export const VennDiagram: React.FC = () => {
             {/* Diagram Body */}
             <div className="p-4">
 
-                {/* Exclusion direction toggle (always visible on exclusion tab) */}
+                {/* Exclusion direction toggle (collapses after results arrive) */}
                 {isExclusion && (
                     <DirectionToggle
                         direction={exclusionDirection}
                         onChange={setExclusionDirection}
                         disabled={isProcessing}
+                        hasResults={hasResults}
                     />
                 )}
 
@@ -136,10 +137,41 @@ interface DirectionToggleProps {
     direction: ExclusionDirection
     onChange: (direction: ExclusionDirection) => void
     disabled?: boolean
+    hasResults?: boolean
 }
 
-const DirectionToggle: React.FC<DirectionToggleProps> = ({ direction, onChange, disabled }) => {
+const DirectionToggle: React.FC<DirectionToggleProps> = ({ direction, onChange, disabled, hasResults }) => {
+    const [expanded, setExpanded] = useState(!hasResults)
+
+    // Auto-collapse when results arrive, auto-expand when they're cleared
+    useEffect(() => {
+        setExpanded(!hasResults)
+    }, [hasResults])
+
     const swap = () => onChange(direction === 'a_minus_b' ? 'b_minus_a' : 'a_minus_b')
+    const currentLabel = direction === 'a_minus_b' ? 'Set A − Set B' : 'Set B − Set A'
+
+    // Collapsed pill — visible after analysis to keep the result visible without scrolling
+    if (!expanded) {
+        return (
+            <div className="mb-3 flex items-center justify-between px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Direction:</span>
+                    <span className="font-semibold text-orange-700">{currentLabel}</span>
+                </div>
+                <button
+                    onClick={() => setExpanded(true)}
+                    disabled={disabled}
+                    className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50"
+                    title="Change direction"
+                >
+                    <ArrowLeftRight className="w-3 h-3" />
+                    Change
+                </button>
+            </div>
+        )
+    }
+
     const options: { value: ExclusionDirection; label: string; sub: string }[] = [
         { value: 'a_minus_b', label: 'Set A − Set B', sub: 'records in A, excluding those in B' },
         { value: 'b_minus_a', label: 'Set B − Set A', sub: 'records in B, excluding those in A' },
