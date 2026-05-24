@@ -4,6 +4,7 @@ import { FileUpload } from '@/components/FileUpload'
 import { VennDiagram } from '@/components/VennDiagram'
 import { FilterPanel } from '@/components/FilterPanel'
 import { ResultsTable } from '@/components/ResultsTable'
+import { ResultsPreview } from '@/components/ResultsPreview'
 import { useAudienceStore } from '@/lib/store'
 import { buildApiUrl, resolveDownloadUrl } from '@/lib/backend'
 import { RefreshCw, Settings } from 'lucide-react'
@@ -95,6 +96,7 @@ export default function Home() {
                 setBCount: result.setBCount,
                 intersectionData: [],
                 headers: result.headers,
+                jobId: result.jobId,
             })
             setDownloadUrl(resolveDownloadUrl(result.downloadUrl))
             if (processingStartRef.current !== null) {
@@ -215,9 +217,10 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Bottom: Results Table */}
+                    {/* Bottom: Results Table + Preview */}
                     <div className="grid grid-cols-1 gap-6">
                         <ResultsTable />
+                        <ResultsPreview />
                     </div>
                 </main>
 

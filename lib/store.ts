@@ -24,6 +24,7 @@ export interface AudienceState {
     intersectionData: Array<Record<string, any>>
     headers: string[]
     downloadUrl: string
+    jobId: string
     processingElapsedSeconds: number
     columnDataTypes: Record<string, string>
     setResults: (counts: {
@@ -33,6 +34,7 @@ export interface AudienceState {
         setBCount: number
         intersectionData: Array<Record<string, any>>
         headers: string[]
+        jobId?: string
         columnDataTypes?: Record<string, string>
     }) => void
     setDownloadUrl: (url: string) => void
@@ -70,6 +72,7 @@ const EMPTY_RESULTS = {
     intersectionData: [],
     headers: [],
     downloadUrl: '',
+    jobId: '',
     processingElapsedSeconds: 0,
     columnDataTypes: {},
 }
@@ -96,6 +99,7 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         setBCount: counts.setBCount,
         intersectionData: counts.intersectionData,
         headers: counts.headers,
+        jobId: counts.jobId ?? '',
         columnDataTypes: counts.columnDataTypes || {},
     }),
     setDownloadUrl: (url) => set({ downloadUrl: url }),

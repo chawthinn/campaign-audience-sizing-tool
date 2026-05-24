@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
 import time
@@ -237,6 +238,7 @@ async def process(
             'success': True,
             'action': action,
             'direction': direction if action == 'exclusion' else None,
+            'jobId': job_id,
             'resultCount': result_count,
             'intersectionCount': intersection_count,
             'setACount': set_a_count,
@@ -251,6 +253,80 @@ async def process(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get(
+    '/preview/{job_id}',
+    responses={
+        404: {'description': 'Result not found'},
+    },
+)
+async def preview(
+    job_id: str,
+    page: int = 1,
+    page_size: int = 50,
+    search: str = '',
+    sort_column: str = '',
+    sort_direction: str = 'asc',
+    filters: str = '',
+) -> dict[str, Any]:
+    """Paginated preview of the result CSV with search/sort/per-column filter."""
+    result_path = JOBS_DIR / job_id / 'result.csv'
+    if not result_path.exists():
+        raise HTTPException(status_code=404, detail='Result not found')
+
+    page = max(1, page)
+    page_size = max(1, min(200, page_size))
+
+    filter_dict: dict[str, str] = {}
+    if filters:
+        try:
+            parsed = json.loads(filters)
+            if isinstance(parsed, dict):
+                filter_dict = {str(k): str(v) for k, v in parsed.items() if v}
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail='filters must be valid JSON')
+
+    lf = pl.scan_csv(str(result_path), encoding='utf8-lossy')
+    schema_names = lf.collect_schema().names()
+
+    # Per-column substring filter (case-insensitive)
+    for col, raw_val in filter_dict.items():
+        if col not in schema_names:
+            continue
+        needle = raw_val.lower()
+        lf = lf.filter(
+            pl.col(col).cast(pl.Utf8).str.to_lowercase().str.contains(needle, literal=True)
+        )
+
+    # Global search across all columns (case-insensitive)
+    if search:
+        needle = search.lower()
+        conditions = [
+            pl.col(c).cast(pl.Utf8).str.to_lowercase().str.contains(needle, literal=True)
+            for c in schema_names
+        ]
+        combined = conditions[0]
+        for cond in conditions[1:]:
+            combined = combined | cond
+        lf = lf.filter(combined)
+
+    total = int(lf.select(pl.len()).collect().item())
+
+    if sort_column and sort_column in schema_names:
+        descending = sort_direction.lower() == 'desc'
+        lf = lf.sort(sort_column, descending=descending, nulls_last=True)
+
+    offset = (page - 1) * page_size
+    rows_df = lf.slice(offset, page_size).collect()
+
+    return {
+        'rows': rows_df.to_dicts(),
+        'headers': schema_names,
+        'totalRows': total,
+        'page': page,
+        'pageSize': page_size,
+    }
 
 
 @app.get(
