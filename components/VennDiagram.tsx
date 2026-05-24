@@ -30,7 +30,6 @@ export const VennDiagram: React.FC = () => {
     const setACount = useAudienceStore((state) => state.setACount)
     const setBCount = useAudienceStore((state) => state.setBCount)
     const isProcessing = useAudienceStore((state) => state.isProcessing)
-    const progress = useAudienceStore((state) => state.progress)
 
     const aOnlyCount = Math.max(0, setACount - intersectionCount)
     const bOnlyCount = Math.max(0, setBCount - intersectionCount)
@@ -55,7 +54,7 @@ export const VennDiagram: React.FC = () => {
                             key={tab.key}
                             onClick={() => switchAction(tab.key)}
                             disabled={isProcessing}
-                            className={`flex-1 px-6 py-4 text-center border-b-2 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`flex-1 px-4 py-3 text-center border-b-2 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 isActive
                                     ? `${tab.activeClass} border-current`
                                     : 'border-transparent text-gray-500 hover:bg-white hover:text-gray-700'
@@ -68,7 +67,7 @@ export const VennDiagram: React.FC = () => {
             </div>
 
             {/* Diagram Body */}
-            <div className="p-6">
+            <div className="p-4">
 
                 {/* Exclusion direction toggle (always visible on exclusion tab) */}
                 {isExclusion && (
@@ -81,15 +80,11 @@ export const VennDiagram: React.FC = () => {
 
                 {isProcessing && (
                     <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-gray-600">
-                            <span>Processing...</span>
-                            <span>{progress}%</span>
+                        <div className="text-sm text-gray-600">
+                            Processing<span className="inline-block animate-pulse">…</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                className={`h-2 rounded-full transition-all duration-300 ${progressBarColor}`}
-                                style={{ width: `${progress}%` }}
-                            />
+                        <div className="indeterminate-track w-full bg-gray-200 rounded-full h-2">
+                            <div className={`indeterminate-bar ${progressBarColor}`} />
                         </div>
                     </div>
                 )}

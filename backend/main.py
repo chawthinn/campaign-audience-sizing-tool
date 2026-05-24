@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import uuid
@@ -60,15 +61,30 @@ def _count_rows_fast(file_path: Path) -> int:
     return max(0, line_count - 1)
 
 
-def _build_intersection(file_a: Path, file_b: Path) -> tuple[pl.LazyFrame, int, int, list[str]]:
+def _resolve_keys(file_a: Path, file_b: Path, key_a: str, key_b: str) -> tuple[str, str, list[str], list[str]]:
+    """Detect headers and validate the chosen join keys.
+
+    Falls back to the first column of each file when a key is empty.
+    """
     headers_a = pl.read_csv(str(file_a), n_rows=0, encoding='utf8-lossy').columns
     headers_b = pl.read_csv(str(file_b), n_rows=0, encoding='utf8-lossy').columns
 
     if not headers_a or not headers_b:
         raise ValueError('Both files must contain at least one column')
 
-    key_a = headers_a[0]
-    key_b = headers_b[0]
+    resolved_a = key_a or headers_a[0]
+    resolved_b = key_b or headers_b[0]
+
+    if resolved_a not in headers_a:
+        raise ValueError(f"Set A has no column named '{resolved_a}'. Available: {', '.join(headers_a)}")
+    if resolved_b not in headers_b:
+        raise ValueError(f"Set B has no column named '{resolved_b}'. Available: {', '.join(headers_b)}")
+
+    return resolved_a, resolved_b, headers_a, headers_b
+
+
+def _build_intersection(file_a: Path, file_b: Path, key_a: str = '', key_b: str = '') -> tuple[pl.LazyFrame, int, int, list[str]]:
+    key_a, key_b, _, headers_b = _resolve_keys(file_a, file_b, key_a, key_b)
 
     ids_a = (
         pl.scan_csv(str(file_a), encoding='utf8-lossy')
@@ -87,21 +103,14 @@ def _build_intersection(file_a: Path, file_b: Path) -> tuple[pl.LazyFrame, int, 
 
 
 def _build_exclusion(
-    file_a: Path, file_b: Path, direction: str
+    file_a: Path, file_b: Path, direction: str, key_a: str = '', key_b: str = ''
 ) -> tuple[pl.LazyFrame, int, int, int, list[str]]:
     """Left anti join: records in one set but not the other.
 
     direction='a_minus_b': rows in A whose key is not in B (returns A's columns)
     direction='b_minus_a': rows in B whose key is not in A (returns B's columns)
     """
-    headers_a = pl.read_csv(str(file_a), n_rows=0, encoding='utf8-lossy').columns
-    headers_b = pl.read_csv(str(file_b), n_rows=0, encoding='utf8-lossy').columns
-
-    if not headers_a or not headers_b:
-        raise ValueError('Both files must contain at least one column')
-
-    key_a = headers_a[0]
-    key_b = headers_b[0]
+    key_a, key_b, headers_a, headers_b = _resolve_keys(file_a, file_b, key_a, key_b)
 
     if direction not in ('a_minus_b', 'b_minus_a'):
         raise ValueError("direction must be 'a_minus_b' or 'b_minus_a'")
@@ -138,16 +147,9 @@ def _build_exclusion(
     return excluded, _count_rows_fast(file_a), _count_rows_fast(file_b), intersection_count, result_headers
 
 
-def _build_merger(file_a: Path, file_b: Path) -> tuple[pl.LazyFrame, int, int, int, list[str]]:
+def _build_merger(file_a: Path, file_b: Path, key_a: str = '', key_b: str = '') -> tuple[pl.LazyFrame, int, int, int, list[str]]:
     """Full outer join: all unique records from both sets."""
-    headers_a = pl.read_csv(str(file_a), n_rows=0, encoding='utf8-lossy').columns
-    headers_b = pl.read_csv(str(file_b), n_rows=0, encoding='utf8-lossy').columns
-
-    if not headers_a or not headers_b:
-        raise ValueError('Both files must contain at least one column')
-
-    key_a = headers_a[0]
-    key_b = headers_b[0]
+    key_a, key_b, _, headers_b = _resolve_keys(file_a, file_b, key_a, key_b)
 
     ids_a = (
         pl.scan_csv(str(file_a), encoding='utf8-lossy')
@@ -196,6 +198,8 @@ async def process(
     file_b: Annotated[UploadFile, File(..., alias='fileB')],
     action: Annotated[str, Form()] = 'intersection',
     direction: Annotated[str, Form()] = 'a_minus_b',
+    key_a: Annotated[str, Form()] = '',
+    key_b: Annotated[str, Form()] = '',
 ) -> dict[str, Any]:
     if action not in ('intersection', 'merger', 'exclusion'):
         raise HTTPException(status_code=400, detail='action must be intersection, merger, or exclusion')
@@ -215,17 +219,21 @@ async def process(
         started_at = time.perf_counter()
 
         if action == 'intersection':
-            result_lf, set_a_count, set_b_count, headers = _build_intersection(file_a_path, file_b_path)
+            result_lf, set_a_count, set_b_count, headers = _build_intersection(
+                file_a_path, file_b_path, key_a, key_b
+            )
             result_df = result_lf.collect()
             intersection_count = len(result_df)
             result_count = intersection_count
         elif action == 'merger':
-            result_lf, set_a_count, set_b_count, intersection_count, headers = _build_merger(file_a_path, file_b_path)
+            result_lf, set_a_count, set_b_count, intersection_count, headers = _build_merger(
+                file_a_path, file_b_path, key_a, key_b
+            )
             result_df = result_lf.collect()
             result_count = len(result_df)
         else:  # exclusion
             result_lf, set_a_count, set_b_count, intersection_count, headers = _build_exclusion(
-                file_a_path, file_b_path, direction
+                file_a_path, file_b_path, direction, key_a, key_b
             )
             result_df = result_lf.collect()
             result_count = len(result_df)
@@ -336,21 +344,45 @@ async def preview(
         404: {'description': 'Result not found'},
     },
 )
-async def download_file(job_id: str) -> FileResponse:
+async def download_file(job_id: str, columns: str = '') -> FileResponse:
     job_dir = JOBS_DIR / job_id
-    result_path = job_dir / 'result.csv'
+    base_result_path = job_dir / 'result.csv'
 
-    if not result_path.exists():
+    if not base_result_path.exists():
         raise HTTPException(status_code=404, detail='Result not found. Please reprocess the files.')
+
+    serve_path = base_result_path
+
+    # Optional column projection
+    if columns:
+        col_list = [c.strip() for c in columns.split(',') if c.strip()]
+        if not col_list:
+            raise HTTPException(status_code=400, detail='columns must contain at least one column')
+
+        all_headers = pl.read_csv(str(base_result_path), n_rows=0, encoding='utf8-lossy').columns
+        invalid = [c for c in col_list if c not in all_headers]
+        if invalid:
+            raise HTTPException(status_code=400, detail=f'Unknown columns: {", ".join(invalid)}')
+
+        # Only build a filtered file if the user actually picked a subset
+        if col_list != all_headers:
+            col_hash = hashlib.md5(','.join(col_list).encode('utf-8')).hexdigest()[:10]
+            filtered_path = job_dir / f'result_{col_hash}.csv'
+            if not filtered_path.exists():
+                (pl.scan_csv(str(base_result_path), encoding='utf8-lossy')
+                    .select(col_list)
+                    .collect()
+                    .write_csv(str(filtered_path)))
+            serve_path = filtered_path
 
     action_txt = job_dir / 'action.txt'
     action = action_txt.read_text().strip() if action_txt.exists() else 'intersection'
 
-    created_at = datetime.fromtimestamp(result_path.stat().st_mtime)
+    created_at = datetime.fromtimestamp(serve_path.stat().st_mtime)
     stamp = created_at.strftime('%Y%m%d_%H%M%S')
 
     return FileResponse(
-        path=str(result_path),
+        path=str(serve_path),
         filename=f'{action}_{stamp}.csv',
         media_type='text/csv',
     )

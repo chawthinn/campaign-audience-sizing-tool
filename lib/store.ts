@@ -16,6 +16,16 @@ export interface AudienceState {
     setFileA: (file: File | null) => void
     setFileB: (file: File | null) => void
 
+    // CSV header detection + primary key selection per file
+    fileAHeaders: string[]
+    fileBHeaders: string[]
+    fileAKey: string
+    fileBKey: string
+    setFileAHeaders: (headers: string[]) => void
+    setFileBHeaders: (headers: string[]) => void
+    setFileAKey: (key: string) => void
+    setFileBKey: (key: string) => void
+
     // Results state
     resultCount: number        // main result count (intersection or union)
     intersectionCount: number  // always the inner-join overlap count
@@ -87,8 +97,33 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     // Initial file state
     fileA: null,
     fileB: null,
-    setFileA: (file) => set({ fileA: file }),
-    setFileB: (file) => set({ fileB: file }),
+    setFileA: (file) => set(
+        file === null
+            ? { fileA: null, fileAHeaders: [], fileAKey: '' }
+            : { fileA: file }
+    ),
+    setFileB: (file) => set(
+        file === null
+            ? { fileB: null, fileBHeaders: [], fileBKey: '' }
+            : { fileB: file }
+    ),
+
+    // CSV header detection
+    fileAHeaders: [],
+    fileBHeaders: [],
+    fileAKey: '',
+    fileBKey: '',
+    setFileAHeaders: (headers) => set((state) => ({
+        fileAHeaders: headers,
+        // Default the key to the first header if not yet selected or no longer valid
+        fileAKey: headers.includes(state.fileAKey) ? state.fileAKey : (headers[0] ?? ''),
+    })),
+    setFileBHeaders: (headers) => set((state) => ({
+        fileBHeaders: headers,
+        fileBKey: headers.includes(state.fileBKey) ? state.fileBKey : (headers[0] ?? ''),
+    })),
+    setFileAKey: (key) => set({ fileAKey: key }),
+    setFileBKey: (key) => set({ fileBKey: key }),
 
     // Initial results state
     ...EMPTY_RESULTS,
@@ -130,6 +165,10 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         set({
             fileA: null,
             fileB: null,
+            fileAHeaders: [],
+            fileBHeaders: [],
+            fileAKey: '',
+            fileBKey: '',
             ...EMPTY_RESULTS,
             isProcessing: false,
             progress: 0,
