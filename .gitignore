@@ -36,3 +36,14 @@ Thumbs.db
 
 # Temp files
 /tmp/
+
+# Python compilation caches
+**/__pycache__/
+*.pyc
+
+# Local backend temporary directories and data drops
+backend/tmp/
+backend/tmp/**
+
+# Block all generated or raw CSV files anywhere in the project
+*.csv

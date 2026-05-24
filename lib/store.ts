@@ -7,16 +7,14 @@ export interface AudienceState {
     setFileA: (file: File | null) => void
     setFileB: (file: File | null) => void
 
-    // Session state
-    sessionId: string | null
-    setSessionId: (id: string | null) => void
-
     // Results state
     intersectionCount: number
     setACount: number
     setBCount: number
     intersectionData: Array<Record<string, any>>
     headers: string[]
+    downloadUrl: string
+    processingElapsedSeconds: number
     columnDataTypes: Record<string, string>
     setResults: (counts: {
         intersectionCount: number
@@ -26,6 +24,8 @@ export interface AudienceState {
         headers: string[]
         columnDataTypes?: Record<string, string>
     }) => void
+    setDownloadUrl: (url: string) => void
+    setProcessingElapsedSeconds: (seconds: number) => void
 
     // Processing state
     isProcessing: boolean
@@ -58,16 +58,14 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     setFileA: (file) => set({ fileA: file }),
     setFileB: (file) => set({ fileB: file }),
 
-    // Initial session state
-    sessionId: null,
-    setSessionId: (id) => set({ sessionId: id }),
-
     // Initial results state
     intersectionCount: 0,
     setACount: 0,
     setBCount: 0,
     intersectionData: [],
     headers: [],
+    downloadUrl: '',
+    processingElapsedSeconds: 0,
     columnDataTypes: {},
     setResults: (counts) => set({
         intersectionCount: counts.intersectionCount,
@@ -77,6 +75,8 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         headers: counts.headers,
         columnDataTypes: counts.columnDataTypes || {},
     }),
+    setDownloadUrl: (url) => set({ downloadUrl: url }),
+    setProcessingElapsedSeconds: (seconds) => set({ processingElapsedSeconds: seconds }),
 
     // Initial processing state
     isProcessing: false,
@@ -103,12 +103,13 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         set({
             fileA: null,
             fileB: null,
-            sessionId: null,
             intersectionCount: 0,
             setACount: 0,
             setBCount: 0,
             intersectionData: [],
             headers: [],
+            downloadUrl: '',
+            processingElapsedSeconds: 0,
             columnDataTypes: {},
             isProcessing: false,
             progress: 0,

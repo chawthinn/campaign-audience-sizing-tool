@@ -6,9 +6,7 @@ A web-based campaign segment sizing tool for marketing teams to estimate eligibl
 
 ✅ **Real-Time Intersection Analysis** - Process millions of records instantly
 ✅ **Interactive Venn Diagram** - Visual representation of set intersections
-✅ **Smart Filtering** - Segment results by column values
-✅ **Paginated Results** - Browse large datasets without loading everything
-✅ **CSV Export** - Download filtered subsets (works around Excel 1M row limit)
+✅ **Simple Export Flow** - Generate and download the intersected CSV directly
 ✅ **Responsive Design** - One-page layout optimized for minimal scrolling
 ✅ **Progress Tracking** - Real-time processing status
 
@@ -17,9 +15,8 @@ A web-based campaign segment sizing tool for marketing teams to estimate eligibl
 - **Frontend**: Next.js 14 + React 18 + TypeScript
 - **Styling**: Tailwind CSS + custom components
 - **State Management**: Zustand
-- **Data Processing**: PapaParse (CSV streaming)
+- **Backend**: FastAPI + Polars for CSV processing
 - **Visualization**: Custom SVG (Venn diagram)
-- **Backend Ready**: Express.js integration for heavy lifting
 
 ## Project Structure
 
@@ -36,7 +33,11 @@ A web-based campaign segment sizing tool for marketing teams to estimate eligibl
 │   └── ResultsTable.tsx      # Paginated results display
 ├── lib/
 │   ├── firebase.ts           # Firebase configuration
+│   ├── backend.ts            # Backend URL helpers
 │   └── store.ts              # Zustand state management
+├── backend/
+│   ├── main.py               # FastAPI + Polars service
+│   └── requirements.txt      # Python dependencies
 ├── utils/
 │   └── csvProcessor.ts       # CSV processing utilities
 ├── styles/
@@ -52,7 +53,7 @@ A web-based campaign segment sizing tool for marketing teams to estimate eligibl
 
 ### Prerequisites
 - Node.js 16+ and npm/yarn
-- Firebase project (for auth & storage)
+- Python 3.10+ for the FastAPI backend
 
 ### Installation
 
@@ -62,18 +63,24 @@ cd "Campaign Audience Sizing Tool"
 npm install
 ```
 
-2. **Configure Firebase** (optional for now)
+2. **Configure the backend URL**
 ```bash
-cp .env.example .env.local
-# Add your Firebase credentials to .env.local
+set NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
 
-3. **Run development server**
+3. **Install and run the Python backend**
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+4. **Run development server**
 ```bash
 npm run dev
 ```
 
-4. **Open browser**
+5. **Open browser**
 Navigate to `http://localhost:3000`
 
 ## Usage
@@ -84,30 +91,21 @@ Navigate to `http://localhost:3000`
 
 2. **Analyze Intersection**
    - Click "Analyze Intersection" button
-   - See real-time progress and Venn diagram
+   - The FastAPI backend writes the result CSV and returns a download link
 
-3. **Filter Results**
-   - Select a column from dropdown
-   - Click a value to filter matching records
-   - Results update instantly
-
-4. **Export Data**
-   - Click "Export as CSV"
-   - Download filtered subset for external analysis
-
-5. **Navigate Results**
-   - Use pagination buttons to browse records
-   - Change "per page" to adjust table size
+3. **Download Data**
+   - Click "Download CSV"
+   - The browser downloads the generated intersection file
 
 ## Performance
 
-- **3M row files**: ~10-30 seconds processing
-- **Streaming approach**: Minimal memory usage
-- **Client-side processing**: No server needed for MVP
+- **3M+ row files**: handled by the Python backend
+- **Polars execution**: streaming-friendly and multi-threaded
+- **Separated frontend/backend**: Next.js stays focused on UI
 
 ## Future Enhancements
 
-- [ ] Express backend for server-side processing
+- [ ] Queue-based processing for very large jobs
 - [ ] Firebase authentication
 - [ ] Cloud storage for file history
 - [ ] Advanced analytics (statistics, charts)
@@ -126,9 +124,7 @@ npm run start
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | No (for future use) | Firebase API key |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | No (for future use) | Firebase project ID |
-| `NEXT_PUBLIC_API_URL` | No | Backend API base URL |
+| `NEXT_PUBLIC_BACKEND_URL` | Yes for Python split | FastAPI base URL, for example `http://localhost:8000` |
 
 ## Troubleshooting
 

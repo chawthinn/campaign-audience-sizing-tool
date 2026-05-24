@@ -1,20 +1,25 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import { FileUpload } from '@/components/FileUpload'
 import { VennDiagram } from '@/components/VennDiagram'
 import { FilterPanel } from '@/components/FilterPanel'
 import { ResultsTable } from '@/components/ResultsTable'
 import { useAudienceStore } from '@/lib/store'
+import { buildApiUrl, resolveDownloadUrl } from '@/lib/backend'
 import { RefreshCw, Settings } from 'lucide-react'
 
 export default function Home() {
     const [showFilterModal, setShowFilterModal] = useState(false)
+    const processingStartRef = useRef<number | null>(null)
+    const timerRef = useRef<ReturnType<typeof globalThis.setInterval> | null>(null)
     const fileA = useAudienceStore((state) => state.fileA)
     const fileB = useAudienceStore((state) => state.fileB)
     const isProcessing = useAudienceStore((state) => state.isProcessing)
     const setProcessing = useAudienceStore((state) => state.setProcessing)
     const setResults = useAudienceStore((state) => state.setResults)
-    const setSessionId = useAudienceStore((state) => state.setSessionId)
+    const setDownloadUrl = useAudienceStore((state) => state.setDownloadUrl)
+    const processingElapsedSeconds = useAudienceStore((state) => state.processingElapsedSeconds)
+    const setProcessingElapsedSeconds = useAudienceStore((state) => state.setProcessingElapsedSeconds)
     const reset = useAudienceStore((state) => state.reset)
     const intersectionCount = useAudienceStore((state) => state.intersectionCount)
 
@@ -24,13 +29,16 @@ export default function Home() {
             return
         }
 
+        processingStartRef.current = performance.now()
+        setProcessingElapsedSeconds(0)
         setProcessing(true, 0)
         try {
             const formData = new FormData()
             formData.append('fileA', fileA)
             formData.append('fileB', fileB)
+            formData.append('action', 'intersection')
 
-            const response = await fetch('/api/process', {
+            const response = await fetch(buildApiUrl('/process'), {
                 method: 'POST',
                 body: formData,
             })
@@ -47,8 +55,6 @@ export default function Home() {
                 return
             }
 
-            console.log('[Process] Got sessionId:', result.sessionId)
-            setSessionId(result.sessionId)
             setResults({
                 intersectionCount: result.intersectionCount,
                 setACount: result.setACount,
@@ -56,15 +62,46 @@ export default function Home() {
                 intersectionData: [],
                 headers: result.headers,
             })
+            setDownloadUrl(resolveDownloadUrl(result.downloadUrl))
+            if (processingStartRef.current !== null) {
+                setProcessingElapsedSeconds((performance.now() - processingStartRef.current) / 1000)
+            }
             setProcessing(false, 100)
         } catch (error) {
+            processingStartRef.current = null
             alert('Error: ' + (error instanceof Error ? error.message : 'Unknown error'))
+            setProcessingElapsedSeconds(0)
             setProcessing(false, 0)
         }
     }
 
+    useEffect(() => {
+        const clearTimer = () => {
+            if (timerRef.current !== null) {
+                globalThis.clearInterval(timerRef.current)
+                timerRef.current = null
+            }
+        }
+
+        if (isProcessing) {
+            const updateElapsed = () => {
+                if (processingStartRef.current !== null) {
+                    setProcessingElapsedSeconds((performance.now() - processingStartRef.current) / 1000)
+                }
+            }
+
+            updateElapsed()
+            timerRef.current = globalThis.setInterval(updateElapsed, 200)
+        } else {
+            clearTimer()
+            processingStartRef.current = null
+        }
+
+        return clearTimer
+    }, [isProcessing, setProcessingElapsedSeconds])
+
     const handleFileSelect = () => {
-        // No need to reset - files are already in the store
+        setDownloadUrl('')
     }
 
     return (
@@ -106,7 +143,7 @@ export default function Home() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         {/* Left Column: Upload (1 col) */}
                         <div className="lg:col-span-1">
-                            <FileUpload onFileSelect={() => { }} />
+                            <FileUpload onFileSelect={handleFileSelect} />
 
                             {/* Process Button */}
                             <button
@@ -116,6 +153,14 @@ export default function Home() {
                             >
                                 {isProcessing ? 'Processing...' : 'Analyze Intersection'}
                             </button>
+
+                            {processingElapsedSeconds > 0 && (
+                                <p className="mt-2 text-sm font-medium text-gray-600 text-center">
+                                    {isProcessing
+                                        ? `Elapsed: ${processingElapsedSeconds.toFixed(1)} seconds`
+                                        : `Completed in ${processingElapsedSeconds.toFixed(1)} seconds.`}
+                                </p>
+                            )}
                         </div>
 
                         {/* Right Side: Venn Diagram + Filter Button (2 cols) */}
