@@ -447,3 +447,7 @@ def _split_filenames(parts: list[int]) -> list[str]:
         return ['segment_a.csv', 'segment_b.csv']
     # Fallback: segment_a.csv, segment_b.csv, segment_c.csv, ...
     return [f'segment_{chr(ord("a") + i)}.csv' for i in range(len(parts))]
+
+@app.get("/")
+def read_root():
+    return {"status": "healthy", "message": "Campaign Audience Sizing Backend is running"}
