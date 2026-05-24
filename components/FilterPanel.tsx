@@ -6,6 +6,7 @@ export const FilterPanel: React.FC = () => {
     const downloadUrl = useAudienceStore((state) => state.downloadUrl)
     const intersectionCount = useAudienceStore((state) => state.intersectionCount)
     const [exporting, setExporting] = React.useState(false)
+    const [action, setAction] = React.useState<'intersection'>('intersection')
 
     const handleExport = async () => {
         if (!downloadUrl) {
@@ -33,17 +34,15 @@ export const FilterPanel: React.FC = () => {
     if (intersectionCount === 0) {
         return (
             <div className="p-6 bg-white rounded-lg smooth-shadow">
-                <h2 className="text-lg font-bold text-gray-900">Export</h2>
-                <p className="text-gray-400 text-sm mt-4">
-                    No data available. Process files first.
-                </p>
+                <h2 className="text-lg font-bold text-gray-900">Action & Export</h2>
+                <p className="text-gray-400 text-sm mt-4">No data available. Upload and process both CSV files first.</p>
             </div>
         )
     }
 
     return (
         <div className="p-6 bg-white rounded-lg smooth-shadow space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Export</h2>
+            <h2 className="text-lg font-bold text-gray-900">Action & Export</h2>
 
             {/* Data Summary */}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
@@ -55,7 +54,11 @@ export const FilterPanel: React.FC = () => {
                 </p>
             </div>
 
-            {/* Export Button */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                <p className="font-semibold">{intersectionCount.toLocaleString()} records</p>
+                <p className="text-xs text-blue-600 mt-1">Current action: {action}</p>
+            </div>
+
             <button
                 onClick={handleExport}
                 disabled={exporting || !downloadUrl}

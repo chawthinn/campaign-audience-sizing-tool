@@ -1,5 +1,11 @@
 import csv
+import os
 import random
+
+# Configuration
+target_dir = "./public/dummy_data"
+output_filename = "targeting_list.csv"
+full_path = os.path.join(target_dir, output_filename)
 
 # 1. Configuration for the existing "eligible" range (3 million total)
 eligible_start = 1_000_001
@@ -10,34 +16,51 @@ desired_eligible_count = 1_700_000
 new_records_start = 4_000_001
 new_records_count = 20_000
 
-print("Generating random sample from eligible users...")
+# Predefined list of locations to pull from randomly
+locations = [
+    "New York, USA",
+    "London, UK",
+    "Toronto, Canada",
+    "Sydney, Australia",
+    "Berlin, Germany",
+    "Paris, France",
+    "Tokyo, Japan",
+    "Mumbai, India",
+    "Singapore, Singapore",
+    "São Paulo, Brazil",
+]
+
+# Ensure the target directory exists
+os.makedirs(target_dir, exist_ok=True)
+
 # Memory-efficient sampling without materializing the entire 3 million range
-eligible_sample = random.sample(range(eligible_start, eligible_end + 1), desired_eligible_count)
+eligible_sample = random.sample(
+    range(eligible_start, eligible_end + 1), desired_eligible_count
+)
+new_records = list(
+    range(new_records_start, new_records_start + new_records_count)
+)
 
-print("Generating new unmatched records...")
-new_records = list(range(new_records_start, new_records_start + new_records_count))
-
-# Combine both lists
+# Combine and sort both lists
 final_targeting_list = eligible_sample + new_records
-
-# Sort them so the CSV looks clean and organized
 final_targeting_list.sort()
 
-# 3. Write to targeting_list.csv
-output_filename = "targeting_list.csv"
-print(f"Writing to {output_filename}...")
-
-with open(output_filename, mode="w", newline="") as file:
+# Write directly to the target path
+with open(full_path, mode="w", newline="") as file:
     writer = csv.writer(file)
-    # Added "email" to the header
-    writer.writerow(["user_id", "email"])  
-    
-    for user_id in final_targeting_list:
-        # Dynamically generate a dummy email for each user ID
-        email = f"user_{user_id}@example.com"
-        writer.writerow([user_id, email])
+    writer.writerow(["user_id", "email", "location"])
 
-print(f"\nSuccess! '{output_filename}' created.")
-print(f"-> Total records: {len(final_targeting_list):,}")
-print(f"-> Matches inside eligible_users: {desired_eligible_count:,}")
-print(f"-> Unmatched records (4,000,001+): {new_records_count:,}")
+    # Batch process writing to keep it fast
+    batch_size = 100000
+    batch = []
+
+    for user_id in final_targeting_list:
+        loc = random.choice(locations)
+        batch.append([user_id, f"user_{user_id}@example.com", loc])
+
+        if len(batch) == batch_size:
+            writer.writerows(batch)
+            batch = []
+
+    if batch:
+        writer.writerows(batch)
