@@ -18,6 +18,8 @@ export interface AudienceState {
     intersectionData: Array<Record<string, any>>
     headers: string[]
     columnDataTypes: Record<string, string>
+    downloadUrl: string | null
+    setDownloadUrl: (url: string | null) => void
     setResults: (counts: {
         intersectionCount: number
         setACount: number
@@ -69,6 +71,7 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     intersectionData: [],
     headers: [],
     columnDataTypes: {},
+    downloadUrl: null,
     setResults: (counts) => set({
         intersectionCount: counts.intersectionCount,
         setACount: counts.setACount,
@@ -77,6 +80,7 @@ export const useAudienceStore = create<AudienceState>((set) => ({
         headers: counts.headers,
         columnDataTypes: counts.columnDataTypes || {},
     }),
+    setDownloadUrl: (url) => set({ downloadUrl: url }),
 
     // Initial processing state
     isProcessing: false,
@@ -110,6 +114,7 @@ export const useAudienceStore = create<AudienceState>((set) => ({
             intersectionData: [],
             headers: [],
             columnDataTypes: {},
+            downloadUrl: null,
             isProcessing: false,
             progress: 0,
             searchQuery: '',

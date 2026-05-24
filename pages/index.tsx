@@ -15,6 +15,7 @@ export default function Home() {
     const setProcessing = useAudienceStore((state) => state.setProcessing)
     const setResults = useAudienceStore((state) => state.setResults)
     const setSessionId = useAudienceStore((state) => state.setSessionId)
+    const setDownloadUrl = useAudienceStore((state) => state.setDownloadUrl)
     const reset = useAudienceStore((state) => state.reset)
     const intersectionCount = useAudienceStore((state) => state.intersectionCount)
 
@@ -49,6 +50,7 @@ export default function Home() {
 
             console.log('[Process] Got sessionId:', result.sessionId)
             setSessionId(result.sessionId)
+            if (result.downloadUrl) setDownloadUrl(result.downloadUrl)
             setResults({
                 intersectionCount: result.intersectionCount,
                 setACount: result.setACount,

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import formidable from 'formidable'
 import fs from 'fs'
+import path from 'path'
 import Papa from 'papaparse'
 import { sessions } from './sessions'
 
@@ -17,6 +18,7 @@ interface ProcessResult {
     setBCount: number
     headers: string[]
     sessionId: string
+    downloadUrl?: string
     message?: string
     error?: string
 }
@@ -120,22 +122,72 @@ export default async function handler(
             setBCount: dataB.length,
         }
 
-        // Clean up uploaded files
+        // Build CSV for download and save to public/tmp
         try {
-            fs.unlinkSync(fileA.filepath)
-            fs.unlinkSync(fileB.filepath)
-        } catch (e) {
-            // File already deleted
-        }
+            const columnsToExport = headersB
+            const csvLines: string[] = []
 
-        res.status(200).json({
-            success: true,
-            intersectionCount: intersectionData.length,
-            setACount: dataA.length,
-            setBCount: dataB.length,
-            headers: headersB,
-            sessionId,
-        })
+            // Header row
+            const headerValues = columnsToExport.map((col) => `"${col.replace(/"/g, '""')}"`)
+            csvLines.push(headerValues.join(','))
+
+            // Data rows
+            intersectionData.forEach((row) => {
+                const values = columnsToExport.map((col) => {
+                    const value = row[col]
+                    if (value === null || value === undefined) return ''
+                    const numValue = Number(value)
+                    if (!isNaN(numValue) && Number.isInteger(numValue)) {
+                        return numValue.toString()
+                    }
+                    return `"${String(value).replace(/"/g, '""')}"`
+                })
+                csvLines.push(values.join(','))
+            })
+
+            const csv = csvLines.join('\n')
+
+            const tmpDir = path.join(process.cwd(), 'public', 'tmp')
+            if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
+
+            // Build filename using function name, today's date and a timestamp
+            const functionName = 'intersection'
+            const now = new Date()
+            const datePart = now.toISOString().slice(0, 10).replace(/-/g, '') // YYYYMMDD
+            const ts = Date.now()
+            const filename = `${functionName}_${datePart}_${ts}.csv`
+            const filePath = path.join(tmpDir, filename)
+            fs.writeFileSync(filePath, csv, 'utf8')
+
+            const downloadUrl = `/tmp/${filename}`
+
+            // Clean up uploaded files
+            try {
+                fs.unlinkSync(fileA.filepath)
+                fs.unlinkSync(fileB.filepath)
+            } catch (e) {
+                // File already deleted
+            }
+
+            res.status(200).json({
+                success: true,
+                intersectionCount: intersectionData.length,
+                setACount: dataA.length,
+                setBCount: dataB.length,
+                headers: headersB,
+                sessionId,
+                downloadUrl,
+            })
+        } catch (err) {
+            // Clean up uploaded files
+            try {
+                fs.unlinkSync(fileA.filepath)
+                fs.unlinkSync(fileB.filepath)
+            } catch (e) {
+                // ignore
+            }
+            throw err
+        }
     } catch (error) {
         res.status(500).json({
             success: false,
