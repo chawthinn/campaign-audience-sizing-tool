@@ -25,7 +25,8 @@ export async function processCSVIntersection(
         const headersA: string[] = []
 
         await new Promise<void>((resolve, reject) => {
-            Papa.parse(fileA, {
+            // Cast to `any` to avoid TypeScript overload mismatch with papaparse types
+            Papa.parse(fileA as any, {
                 header: true,
                 skipEmptyLines: true,
                 chunk: (results) => {
@@ -46,7 +47,7 @@ export async function processCSVIntersection(
                     }
                 },
                 error: reject,
-                complete: resolve,
+                complete: () => resolve(),
             })
         })
 
@@ -58,7 +59,8 @@ export async function processCSVIntersection(
         const headersB: string[] = []
 
         await new Promise<void>((resolve, reject) => {
-            Papa.parse(fileB, {
+            // Cast to `any` to avoid TypeScript overload mismatch with papaparse types
+            Papa.parse(fileB as any, {
                 header: true,
                 skipEmptyLines: true,
                 chunk: (results) => {
@@ -81,7 +83,7 @@ export async function processCSVIntersection(
                     }
                 },
                 error: reject,
-                complete: resolve,
+                complete: () => resolve(),
             })
         })
 
