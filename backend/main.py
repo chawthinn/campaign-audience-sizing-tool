@@ -30,24 +30,14 @@ app.add_middleware(
 )
 
 
-def _make_temp_name(prefix: str = 'intersection') -> str:
-    now = datetime.now()
-    return f"{prefix}_{now.strftime('%Y%m%d')}_{now.strftime('%H%M%S')}_{now.microsecond // 1000:03d}.csv"
-
-
-async def _save_upload(upload: UploadFile, target_dir: Path) -> Path:
-    suffix = Path(upload.filename or 'upload.csv').suffix or '.csv'
-    temp_path = target_dir / f"{datetime.now().timestamp():.0f}_{os.urandom(4).hex()}{suffix}"
-
-    with temp_path.open('wb') as output_file:
+async def _save_upload_to(upload: UploadFile, target_path: Path) -> None:
+    with target_path.open('wb') as fh:
         while True:
             chunk = await upload.read(1024 * 1024)
             if not chunk:
                 break
-            output_file.write(chunk)
-
+            fh.write(chunk)
     await upload.close()
-    return temp_path
 
 
 def _count_rows_fast(file_path: Path) -> int:
@@ -57,12 +47,11 @@ def _count_rows_fast(file_path: Path) -> int:
     newline_count = 0
     last_byte = b''
 
-    with file_path.open('rb') as file_handle:
+    with file_path.open('rb') as fh:
         while True:
-            chunk = file_handle.read(1024 * 1024)
+            chunk = fh.read(1024 * 1024)
             if not chunk:
                 break
-
             newline_count += chunk.count(b'\n')
             last_byte = chunk[-1:]
 
@@ -96,11 +85,96 @@ def _build_intersection(file_a: Path, file_b: Path) -> tuple[pl.LazyFrame, int, 
     return intersection, _count_rows_fast(file_a), _count_rows_fast(file_b), headers_b
 
 
-def _job_paths(job_id: str) -> tuple[Path, Path, Path]:
-    job_dir = JOBS_DIR / job_id
-    file_a_path = job_dir / 'fileA.csv'
-    file_b_path = job_dir / 'fileB.csv'
-    return job_dir, file_a_path, file_b_path
+def _build_exclusion(
+    file_a: Path, file_b: Path, direction: str
+) -> tuple[pl.LazyFrame, int, int, int, list[str]]:
+    """Left anti join: records in one set but not the other.
+
+    direction='a_minus_b': rows in A whose key is not in B (returns A's columns)
+    direction='b_minus_a': rows in B whose key is not in A (returns B's columns)
+    """
+    headers_a = pl.read_csv(str(file_a), n_rows=0, encoding='utf8-lossy').columns
+    headers_b = pl.read_csv(str(file_b), n_rows=0, encoding='utf8-lossy').columns
+
+    if not headers_a or not headers_b:
+        raise ValueError('Both files must contain at least one column')
+
+    key_a = headers_a[0]
+    key_b = headers_b[0]
+
+    if direction not in ('a_minus_b', 'b_minus_a'):
+        raise ValueError("direction must be 'a_minus_b' or 'b_minus_a'")
+
+    ids_a = (
+        pl.scan_csv(str(file_a), encoding='utf8-lossy')
+        .select(pl.col(key_a).cast(pl.Utf8).str.strip_chars().alias(key_a))
+        .filter(pl.col(key_a).is_not_null())
+        .unique()
+    )
+    df_b_keyed = (
+        pl.scan_csv(str(file_b), encoding='utf8-lossy')
+        .with_columns(pl.col(key_b).cast(pl.Utf8).str.strip_chars().alias(key_b))
+    )
+
+    # Intersection count (for stats sidebar)
+    intersection_count = int(
+        df_b_keyed.join(ids_a, left_on=key_b, right_on=key_a, how='inner')
+        .select(pl.len()).collect().item()
+    )
+
+    if direction == 'a_minus_b':
+        ids_b = df_b_keyed.select(pl.col(key_b).alias(key_b)).filter(pl.col(key_b).is_not_null()).unique()
+        excluded = (
+            pl.scan_csv(str(file_a), encoding='utf8-lossy')
+            .with_columns(pl.col(key_a).cast(pl.Utf8).str.strip_chars().alias(key_a))
+            .join(ids_b, left_on=key_a, right_on=key_b, how='anti')
+        )
+        result_headers = headers_a
+    else:
+        excluded = df_b_keyed.join(ids_a, left_on=key_b, right_on=key_a, how='anti')
+        result_headers = headers_b
+
+    return excluded, _count_rows_fast(file_a), _count_rows_fast(file_b), intersection_count, result_headers
+
+
+def _build_merger(file_a: Path, file_b: Path) -> tuple[pl.LazyFrame, int, int, int, list[str]]:
+    """Full outer join: all unique records from both sets."""
+    headers_a = pl.read_csv(str(file_a), n_rows=0, encoding='utf8-lossy').columns
+    headers_b = pl.read_csv(str(file_b), n_rows=0, encoding='utf8-lossy').columns
+
+    if not headers_a or not headers_b:
+        raise ValueError('Both files must contain at least one column')
+
+    key_a = headers_a[0]
+    key_b = headers_b[0]
+
+    ids_a = (
+        pl.scan_csv(str(file_a), encoding='utf8-lossy')
+        .select(pl.col(key_a).cast(pl.Utf8).str.strip_chars().alias(key_a))
+        .filter(pl.col(key_a).is_not_null())
+        .unique()
+    )
+
+    df_b = (
+        pl.scan_csv(str(file_b), encoding='utf8-lossy')
+        .with_columns(pl.col(key_b).cast(pl.Utf8).str.strip_chars().alias(key_b))
+        .filter(pl.col(key_b).is_not_null())
+    )
+
+    # Count records that exist in both sets (for stats display)
+    intersection_count = int(
+        df_b.join(ids_a, left_on=key_b, right_on=key_a, how='inner')
+        .select(pl.len()).collect().item()
+    )
+
+    # IDs from A that are not present in B
+    b_keys = df_b.select(pl.col(key_b).alias(key_a)).unique()
+    a_only = ids_a.join(b_keys, on=key_a, how='anti').rename({key_a: key_b})
+
+    # Union: all rows from B + A-only rows (missing columns filled with null)
+    merged = pl.concat([df_b, a_only], how='diagonal_relaxed')
+
+    return merged, _count_rows_fast(file_a), _count_rows_fast(file_b), intersection_count, headers_b
 
 
 @app.get('/health')
@@ -120,26 +194,50 @@ async def process(
     file_a: Annotated[UploadFile, File(..., alias='fileA')],
     file_b: Annotated[UploadFile, File(..., alias='fileB')],
     action: Annotated[str, Form()] = 'intersection',
+    direction: Annotated[str, Form()] = 'a_minus_b',
 ) -> dict[str, Any]:
-    if action != 'intersection':
-        raise HTTPException(status_code=400, detail='Only intersection is supported right now')
+    if action not in ('intersection', 'merger', 'exclusion'):
+        raise HTTPException(status_code=400, detail='action must be intersection, merger, or exclusion')
 
     job_id = uuid.uuid4().hex
-    job_dir, file_a_path, file_b_path = _job_paths(job_id)
+    job_dir = JOBS_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    file_a_path = await _save_upload(file_a, job_dir)
-    file_b_path = await _save_upload(file_b, job_dir)
+    file_a_path = job_dir / 'fileA.csv'
+    file_b_path = job_dir / 'fileB.csv'
+    await _save_upload_to(file_a, file_a_path)
+    await _save_upload_to(file_b, file_b_path)
+    action_label = f'{action}_{direction}' if action == 'exclusion' else action
+    (job_dir / 'action.txt').write_text(action_label)
 
     try:
         started_at = time.perf_counter()
-        intersection, set_a_count, set_b_count, headers = _build_intersection(file_a_path, file_b_path)
-        intersection_count = int(intersection.select(pl.len()).collect(streaming=True).item())
+
+        if action == 'intersection':
+            result_lf, set_a_count, set_b_count, headers = _build_intersection(file_a_path, file_b_path)
+            result_df = result_lf.collect()
+            intersection_count = len(result_df)
+            result_count = intersection_count
+        elif action == 'merger':
+            result_lf, set_a_count, set_b_count, intersection_count, headers = _build_merger(file_a_path, file_b_path)
+            result_df = result_lf.collect()
+            result_count = len(result_df)
+        else:  # exclusion
+            result_lf, set_a_count, set_b_count, intersection_count, headers = _build_exclusion(
+                file_a_path, file_b_path, direction
+            )
+            result_df = result_lf.collect()
+            result_count = len(result_df)
+
+        result_path = job_dir / 'result.csv'
+        result_df.write_csv(str(result_path))
         processing_seconds = round(time.perf_counter() - started_at, 2)
 
         return {
             'success': True,
             'action': action,
+            'direction': direction if action == 'exclusion' else None,
+            'resultCount': result_count,
             'intersectionCount': intersection_count,
             'setACount': set_a_count,
             'setBCount': set_b_count,
@@ -159,21 +257,24 @@ async def process(
     '/downloads/{job_id}',
     name='download_file',
     responses={
-        404: {'description': 'File not found'},
+        404: {'description': 'Result not found'},
     },
 )
 async def download_file(job_id: str) -> FileResponse:
-    job_dir, file_a_path, file_b_path = _job_paths(job_id)
-    if not file_a_path.exists() or not file_b_path.exists():
-        raise HTTPException(status_code=404, detail='File not found')
-
+    job_dir = JOBS_DIR / job_id
     result_path = job_dir / 'result.csv'
+
     if not result_path.exists():
-        intersection, _, _, _ = _build_intersection(file_a_path, file_b_path)
-        intersection.sink_csv(str(result_path))
+        raise HTTPException(status_code=404, detail='Result not found. Please reprocess the files.')
+
+    action_txt = job_dir / 'action.txt'
+    action = action_txt.read_text().strip() if action_txt.exists() else 'intersection'
+
+    created_at = datetime.fromtimestamp(result_path.stat().st_mtime)
+    stamp = created_at.strftime('%Y%m%d_%H%M%S')
 
     return FileResponse(
         path=str(result_path),
-        filename='intersection.csv',
+        filename=f'{action}_{stamp}.csv',
         media_type='text/csv',
     )
