@@ -94,26 +94,7 @@ export const VennDiagram: React.FC = () => {
                     </div>
                 )}
 
-                {!hasResults && !isProcessing && (
-                    isExclusion ? (
-                        <ExclusionView
-                            direction={exclusionDirection}
-                            aOnlyCount={0}
-                            intersectionCount={0}
-                            bOnlyCount={0}
-                            setACount={0}
-                            setBCount={0}
-                            resultCount={0}
-                            preview
-                        />
-                    ) : (
-                        <div className="flex items-center justify-center h-64 text-gray-400">
-                            <p>Upload both files to see the diagram</p>
-                        </div>
-                    )
-                )}
-
-                {hasResults && !isProcessing && (
+                {!isProcessing && (
                     isMerger ? (
                         <MergerView
                             aOnlyCount={aOnlyCount}
@@ -122,6 +103,7 @@ export const VennDiagram: React.FC = () => {
                             setACount={setACount}
                             setBCount={setBCount}
                             resultCount={resultCount}
+                            preview={!hasResults}
                         />
                     ) : isExclusion ? (
                         <ExclusionView
@@ -132,6 +114,7 @@ export const VennDiagram: React.FC = () => {
                             setACount={setACount}
                             setBCount={setBCount}
                             resultCount={resultCount}
+                            preview={!hasResults}
                         />
                     ) : (
                         <IntersectionView
@@ -140,6 +123,8 @@ export const VennDiagram: React.FC = () => {
                             bOnlyCount={bOnlyCount}
                             setACount={setACount}
                             setBCount={setBCount}
+                            resultCount={resultCount}
+                            preview={!hasResults}
                         />
                     )
                 )}
@@ -215,106 +200,164 @@ interface IntersectionViewProps {
     bOnlyCount: number
     setACount: number
     setBCount: number
+    resultCount?: number
+    preview?: boolean
 }
 
 const IntersectionView: React.FC<IntersectionViewProps> = ({
-    aOnlyCount, intersectionCount, bOnlyCount, setACount, setBCount,
-}) => (
-    <div className="flex gap-8">
-        <div className="flex-1 flex items-center justify-center">
-            <svg width="280" height="260" viewBox="0 0 280 260">
-                <circle cx="85" cy="130" r="70" fill="#6366f1" opacity="0.3" stroke="#6366f1" strokeWidth="2" />
-                <circle cx="195" cy="130" r="70" fill="#ec4899" opacity="0.3" stroke="#ec4899" strokeWidth="2" />
-                <text x="45" y="135" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1f2937">
-                    {aOnlyCount.toLocaleString()}
-                </text>
-                <text x="140" y="130" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#1f2937">
-                    {intersectionCount.toLocaleString()}
-                </text>
-                <text x="225" y="135" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1f2937">
-                    {bOnlyCount.toLocaleString()}
-                </text>
-                <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
-                <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
-            </svg>
-        </div>
+    aOnlyCount, intersectionCount, bOnlyCount, setACount, setBCount, preview,
+}) => {
+    const fmt = (n: number) => preview ? '—' : n.toLocaleString()
+    const overlapPct = !preview && setACount > 0 && setBCount > 0
+        ? `${((intersectionCount / Math.max(setACount, setBCount)) * 100).toFixed(1)}% overlap`
+        : null
 
-        <div className="flex-1 space-y-4">
-            <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                <p className="text-sm text-gray-600">Set A (Total)</p>
-                <p className="text-2xl font-bold text-indigo-600">{setACount.toLocaleString()}</p>
+    return (
+        <div className="flex gap-8">
+            <div className="flex-1 flex items-center justify-center">
+                <svg width="280" height="260" viewBox="0 0 280 260">
+                    {/* Sides muted in preview to emphasize the returned region (the overlap) */}
+                    <circle cx="85" cy="130" r="70"
+                        fill={preview ? '#e5e7eb' : '#6366f1'}
+                        opacity={preview ? 0.45 : 0.3}
+                        stroke={preview ? '#9ca3af' : '#6366f1'} strokeWidth="2" />
+                    <circle cx="195" cy="130" r="70"
+                        fill={preview ? '#e5e7eb' : '#ec4899'}
+                        opacity={preview ? 0.45 : 0.3}
+                        stroke={preview ? '#9ca3af' : '#ec4899'} strokeWidth="2" />
+
+                    {/* Preview: highlight the overlap (target region) in blue */}
+                    {preview && (
+                        <>
+                            <defs>
+                                <clipPath id="intersection-overlap-clip">
+                                    <circle cx="85" cy="130" r="70" />
+                                </clipPath>
+                            </defs>
+                            <circle cx="195" cy="130" r="70"
+                                fill="#3b82f6" opacity="0.55"
+                                stroke="#1d4ed8" strokeWidth="2"
+                                clipPath="url(#intersection-overlap-clip)" />
+                        </>
+                    )}
+
+                    <text x="45" y="135" textAnchor="middle" fontSize="14"
+                        fontWeight="bold" fill={preview ? '#9ca3af' : '#1f2937'}>
+                        {fmt(aOnlyCount)}
+                    </text>
+                    <text x="140" y={preview ? 128 : 130} textAnchor="middle"
+                        fontSize={preview ? 14 : 16}
+                        fontWeight="bold" fill={preview ? '#1e40af' : '#1f2937'}>
+                        {preview ? '?' : intersectionCount.toLocaleString()}
+                    </text>
+                    {preview && (
+                        <text x="140" y="143" textAnchor="middle" fontSize="9" fill="#1e3a8a">
+                            returned
+                        </text>
+                    )}
+                    <text x="225" y="135" textAnchor="middle" fontSize="14"
+                        fontWeight="bold" fill={preview ? '#9ca3af' : '#1f2937'}>
+                        {fmt(bOnlyCount)}
+                    </text>
+                    <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
+                    <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
+                    <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
+                        {preview
+                            ? <>Will return: Users found in <tspan fontWeight="bold" fill="#374151">both</tspan> lists</>
+                            : `Users in both lists: ${intersectionCount.toLocaleString()}`}
+                    </text>
+                </svg>
             </div>
-            <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
-                <p className="text-sm text-gray-600">Set B (Total)</p>
-                <p className="text-2xl font-bold text-pink-600">{setBCount.toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <p className="text-sm text-gray-600">Intersection</p>
-                <p className="text-2xl font-bold text-purple-600">{intersectionCount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                    {((intersectionCount / Math.max(setACount, setBCount)) * 100).toFixed(1)}% overlap
-                </p>
+
+            <div className="flex-1 space-y-4">
+                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <p className="text-sm text-gray-600">Set A (Total)</p>
+                    <p className="text-2xl font-bold text-indigo-600">{fmt(setACount)}</p>
+                </div>
+                <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                    <p className="text-sm text-gray-600">Set B (Total)</p>
+                    <p className="text-2xl font-bold text-pink-600">{fmt(setBCount)}</p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-gray-600">Intersection</p>
+                    <p className="text-2xl font-bold text-blue-700">{fmt(intersectionCount)}</p>
+                    {overlapPct && <p className="text-xs text-gray-500 mt-1">{overlapPct}</p>}
+                    {preview && <p className="text-xs text-blue-600/80 mt-1">Records in both Set A and Set B</p>}
+                </div>
             </div>
         </div>
-    </div>
-)
+    )
+}
 
 // ---------------------------------------------------------------------------
 // Merger view
 // ---------------------------------------------------------------------------
 
-interface MergerViewProps extends IntersectionViewProps {
+interface MergerViewProps extends Omit<IntersectionViewProps, 'resultCount'> {
     resultCount: number
 }
 
 const MergerView: React.FC<MergerViewProps> = ({
-    aOnlyCount, intersectionCount, bOnlyCount, setACount, setBCount, resultCount,
-}) => (
-    <div className="flex gap-8">
-        <div className="flex-1 flex items-center justify-center">
-            <svg width="280" height="260" viewBox="0 0 280 260">
-                <circle cx="85" cy="130" r="70" fill="#8b5cf6" opacity="0.45" stroke="#7c3aed" strokeWidth="2" />
-                <circle cx="195" cy="130" r="70" fill="#06b6d4" opacity="0.45" stroke="#0891b2" strokeWidth="2" />
-                <text x="45" y="135" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1f2937">
-                    {aOnlyCount.toLocaleString()}
-                </text>
-                <text x="140" y="125" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#1f2937">
-                    {intersectionCount.toLocaleString()}
-                </text>
-                <text x="140" y="142" textAnchor="middle" fontSize="9" fill="#6b7280">overlap</text>
-                <text x="225" y="135" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1f2937">
-                    {bOnlyCount.toLocaleString()}
-                </text>
-                <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
-                <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
-                <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
-                    Union: {resultCount.toLocaleString()}
-                </text>
-            </svg>
-        </div>
+    aOnlyCount, intersectionCount, bOnlyCount, setACount, setBCount, resultCount, preview,
+}) => {
+    const fmt = (n: number) => preview ? '—' : n.toLocaleString()
 
-        <div className="flex-1 space-y-3">
-            <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
-                <p className="text-sm text-gray-600">Set A (Total)</p>
-                <p className="text-xl font-bold text-violet-600">{setACount.toLocaleString()}</p>
+    return (
+        <div className="flex gap-8">
+            <div className="flex-1 flex items-center justify-center">
+                <svg width="280" height="260" viewBox="0 0 280 260">
+                    {/* Both circles emphasized — merger returns everything */}
+                    <circle cx="85" cy="130" r="70"
+                        fill="#8b5cf6" opacity={preview ? 0.55 : 0.45}
+                        stroke="#7c3aed" strokeWidth="2" />
+                    <circle cx="195" cy="130" r="70"
+                        fill="#06b6d4" opacity={preview ? 0.55 : 0.45}
+                        stroke="#0891b2" strokeWidth="2" />
+
+                    <text x="45" y="135" textAnchor="middle" fontSize="14"
+                        fontWeight="bold" fill={preview ? '#5b21b6' : '#1f2937'}>
+                        {preview ? '?' : aOnlyCount.toLocaleString()}
+                    </text>
+                    <text x="140" y="125" textAnchor="middle" fontSize="13"
+                        fontWeight="bold" fill={preview ? '#374151' : '#1f2937'}>
+                        {preview ? '?' : intersectionCount.toLocaleString()}
+                    </text>
+                    <text x="140" y="142" textAnchor="middle" fontSize="9" fill="#6b7280">overlap</text>
+                    <text x="225" y="135" textAnchor="middle" fontSize="14"
+                        fontWeight="bold" fill={preview ? '#155e75' : '#1f2937'}>
+                        {preview ? '?' : bOnlyCount.toLocaleString()}
+                    </text>
+                    <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
+                    <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
+                    <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
+                        {preview ? 'Will return: Total unique users combined' : `Total unique users: ${resultCount.toLocaleString()}`}
+                    </text>
+                </svg>
             </div>
-            <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-                <p className="text-sm text-gray-600">Set B (Total)</p>
-                <p className="text-xl font-bold text-cyan-600">{setBCount.toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                <p className="text-sm text-gray-600">Merger (Union)</p>
-                <p className="text-xl font-bold text-emerald-700">{resultCount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">All unique records</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600">Overlap</p>
-                <p className="text-xl font-bold text-gray-700">{intersectionCount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">In both sets</p>
+
+            <div className="flex-1 space-y-3">
+                <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
+                    <p className="text-sm text-gray-600">Set A (Total)</p>
+                    <p className="text-xl font-bold text-violet-600">{fmt(setACount)}</p>
+                </div>
+                <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+                    <p className="text-sm text-gray-600">Set B (Total)</p>
+                    <p className="text-xl font-bold text-cyan-600">{fmt(setBCount)}</p>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-sm text-gray-600">Merger (Union)</p>
+                    <p className="text-xl font-bold text-purple-700">{fmt(resultCount)}</p>
+                    <p className="text-xs text-purple-600/80 mt-1">All unique records</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-600">Overlap</p>
+                    <p className="text-xl font-bold text-gray-700">{fmt(intersectionCount)}</p>
+                    <p className="text-xs text-gray-500 mt-1">In both sets</p>
+                </div>
             </div>
         </div>
-    </div>
-)
+    )
+}
 
 // ---------------------------------------------------------------------------
 // Exclusion view
