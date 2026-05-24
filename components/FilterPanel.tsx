@@ -16,7 +16,7 @@ export const FilterPanel: React.FC = () => {
 
     const handleExport = async () => {
         console.log('Export clicked. SessionId:', sessionId)
-        
+
         if (!sessionId) {
             alert('No session ID. Did you process files?')
             return
@@ -111,18 +111,16 @@ export const FilterPanel: React.FC = () => {
                         <button
                             key={header}
                             onClick={() => toggleColumn(header)}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition text-left ${
-                                exportColumns.includes(header) || exportColumns.length === 0
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition text-left ${exportColumns.includes(header) || exportColumns.length === 0
                                     ? 'bg-blue-100 text-blue-900'
                                     : 'bg-white text-gray-700 hover:bg-gray-100'
-                            }`}
+                                }`}
                         >
                             <Check
-                                className={`w-4 h-4 flex-shrink-0 ${
-                                    exportColumns.includes(header) || exportColumns.length === 0
+                                className={`w-4 h-4 flex-shrink-0 ${exportColumns.includes(header) || exportColumns.length === 0
                                         ? 'opacity-100'
                                         : 'opacity-0'
-                                }`}
+                                    }`}
                             />
                             <span className="flex-1">{header}</span>
                             <span className="text-xs px-2 py-0.5 bg-gray-300 rounded flex-shrink-0">

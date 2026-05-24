@@ -115,8 +115,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         refB.current && (refB.current.value = '')
                     }}
                     className={`px-3 py-1 rounded text-sm font-medium transition flex items-center gap-1 ${useDummyData
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                 >
                     <Database className="w-4 h-4" />
@@ -221,8 +221,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         ) : (
                             <div
                                 className={`relative border-2 border-dashed rounded-lg p-6 transition cursor-pointer ${dragOverA
-                                        ? 'border-green-500 bg-green-100'
-                                        : 'border-gray-300 bg-white hover:border-green-500'
+                                    ? 'border-green-500 bg-green-100'
+                                    : 'border-gray-300 bg-white hover:border-green-500'
                                     }`}
                                 onClick={() => refA.current?.click()}
                                 onDrop={(e) => handleDrop(e, true)}
@@ -266,8 +266,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         ) : (
                             <div
                                 className={`relative border-2 border-dashed rounded-lg p-6 transition cursor-pointer ${dragOverB
-                                        ? 'border-green-500 bg-green-100'
-                                        : 'border-gray-300 bg-white hover:border-green-500'
+                                    ? 'border-green-500 bg-green-100'
+                                    : 'border-gray-300 bg-white hover:border-green-500'
                                     }`}
                                 onClick={() => refB.current?.click()}
                                 onDrop={(e) => handleDrop(e, false)}

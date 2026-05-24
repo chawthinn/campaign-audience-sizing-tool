@@ -130,9 +130,8 @@ export const ResultsTable: React.FC = () => {
                                 displayData.map((row, idx) => (
                                     <tr
                                         key={idx}
-                                        className={`border-b border-gray-200 hover:bg-blue-50 transition ${
-                                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                        }`}
+                                        className={`border-b border-gray-200 hover:bg-blue-50 transition ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                            }`}
                                     >
                                         {/* Row Number */}
                                         <td className="w-12 px-3 py-2 text-center text-gray-500 text-xs border-r border-gray-300 font-medium">
