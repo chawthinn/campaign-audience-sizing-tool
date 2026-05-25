@@ -44,9 +44,9 @@ export const VennDiagram: React.FC = () => {
         'bg-blue-500'
 
     return (
-        <div className="bg-white rounded-lg smooth-shadow overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-lg smooth-shadow overflow-hidden">
             {/* Tab Header */}
-            <div className="flex border-b border-gray-200 bg-gray-50">
+            <div className="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
                 {TABS.map((tab) => {
                     const isActive = action === tab.key
                     return (
@@ -56,8 +56,8 @@ export const VennDiagram: React.FC = () => {
                             disabled={isProcessing}
                             className={`flex-1 px-4 py-3 text-center border-b-2 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 isActive
-                                    ? `${tab.activeClass} border-current`
-                                    : 'border-transparent text-gray-500 hover:bg-white hover:text-gray-700'
+                                    ? `${tab.activeClass} border-current dark:bg-slate-800`
+                                    : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200'
                             }`}
                         >
                             <div className="text-sm font-semibold">{tab.label}</div>
@@ -289,7 +289,7 @@ const IntersectionView: React.FC<IntersectionViewProps> = ({
                     <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
                     <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
                     <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
-                        {preview ? 'Will return: A ∩ B' : `Users in both lists: ${intersectionCount.toLocaleString()}`}
+                        {preview ? 'Will return: Users exist in both files' : `Users in both lists: ${intersectionCount.toLocaleString()}`}
                     </text>
                 </svg>
             </div>

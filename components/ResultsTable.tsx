@@ -29,9 +29,9 @@ export const ResultsTable: React.FC = () => {
 
     if (resultCount === 0) {
         return (
-            <div className="p-6 bg-white rounded-lg smooth-shadow">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Results</h2>
-                <p className="text-gray-400 text-sm">
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-lg smooth-shadow">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">Results</h2>
+                <p className="text-gray-400 dark:text-slate-500 text-sm">
                     Process files to see the {placeholderLabel} summary.
                 </p>
             </div>
@@ -41,22 +41,22 @@ export const ResultsTable: React.FC = () => {
     const fourCol = isMerger || isExclusion
 
     return (
-        <div className="p-6 bg-white rounded-lg smooth-shadow space-y-4">
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-lg smooth-shadow space-y-4">
             <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Results</h2>
-                <p className="text-sm text-gray-500">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-1">Results</h2>
+                <p className="text-sm text-gray-500 dark:text-slate-400">
                     Your audience list is ready. Download the complete file below.
                 </p>
             </div>
 
             <div className={`grid gap-3 ${fourCol ? 'grid-cols-1 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Set A</div>
-                    <div className="mt-1 text-2xl font-bold text-slate-900">{setACount.toLocaleString()}</div>
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4">
+                    <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Set A</div>
+                    <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{setACount.toLocaleString()}</div>
                 </div>
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Set B</div>
-                    <div className="mt-1 text-2xl font-bold text-slate-900">{setBCount.toLocaleString()}</div>
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4">
+                    <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Set B</div>
+                    <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{setBCount.toLocaleString()}</div>
                 </div>
                 {isMerger && (
                     <>
@@ -78,9 +78,9 @@ export const ResultsTable: React.FC = () => {
                             </div>
                             <div className="mt-1 text-2xl font-bold text-orange-900">{resultCount.toLocaleString()}</div>
                         </div>
-                        <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-600">Overlap (excluded)</div>
-                            <div className="mt-1 text-2xl font-bold text-gray-800">{intersectionCount.toLocaleString()}</div>
+                        <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-600 dark:text-slate-400">Overlap (excluded)</div>
+                            <div className="mt-1 text-2xl font-bold text-gray-800 dark:text-slate-100">{intersectionCount.toLocaleString()}</div>
                         </div>
                     </>
                 )}

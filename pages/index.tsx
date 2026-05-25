@@ -7,7 +7,8 @@ import { ResultsTable } from '@/components/ResultsTable'
 import { ResultsPreview } from '@/components/ResultsPreview'
 import { useAudienceStore } from '@/lib/store'
 import { buildApiUrl, resolveDownloadUrl } from '@/lib/backend'
-import { RefreshCw, Settings } from 'lucide-react'
+import { useTheme } from '@/lib/theme'
+import { RefreshCw, Settings, Moon, Sun } from 'lucide-react'
 
 const BUTTON_CONFIG = {
     intersection: {
@@ -58,6 +59,7 @@ async function uploadFileToGcs(file: File, suggestedName: string): Promise<strin
 
 export default function Home() {
     const [showFilterModal, setShowFilterModal] = useState(false)
+    const [theme, , toggleTheme] = useTheme()
     const processingStartRef = useRef<number | null>(null)
     const timerRef = useRef<ReturnType<typeof globalThis.setInterval> | null>(null)
 
@@ -217,38 +219,50 @@ export default function Home() {
     return (
         <>
             <Head>
-                <title>Campaign Audience Sizing Tool</title>
+                <title>Marketing Audience Segmentation Tool</title>
                 <meta name="description" content="Real-time audience intersection and merger analysis" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
             </Head>
 
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
                 {/* Header */}
-                <header className="sticky top-0 z-50 bg-white border-b border-gray-200 smooth-shadow">
+                <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 smooth-shadow">
                     <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
                         <div className="flex justify-between items-center">
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900">
-                                    🎯 Campaign Audience Sizing Tool
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                                    🎯 Marketing Audience Segmentation Tool
                                 </h1>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                                     Audience intersection &amp; merger analysis for marketing campaigns
                                 </p>
                             </div>
-                            <button
-                                onClick={reset}
-                                disabled={isProcessing}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Reset all data"
-                            >
-                                <RefreshCw className="w-5 h-5 text-gray-600" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={toggleTheme}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition"
+                                    title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                                    aria-label="Toggle theme"
+                                >
+                                    {theme === 'dark'
+                                        ? <Sun className="w-5 h-5 text-amber-400" />
+                                        : <Moon className="w-5 h-5 text-slate-600" />}
+                                </button>
+                                <button
+                                    onClick={reset}
+                                    disabled={isProcessing}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Reset all data"
+                                >
+                                    <RefreshCw className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </header>
 
                 {/* Main Content */}
-                <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <main className="flex-1 max-w-[1920px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
 
                     {/* Grid Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
@@ -265,7 +279,7 @@ export default function Home() {
                             </button>
 
                             {processingElapsedSeconds > 0 && (
-                                <p className="mt-2 text-sm font-medium text-gray-600 text-center">
+                                <p className="mt-2 text-sm font-medium text-gray-600 dark:text-slate-300 text-center">
                                     {isProcessing
                                         ? `Elapsed: ${processingElapsedSeconds.toFixed(1)}s`
                                         : `Completed in ${processingElapsedSeconds.toFixed(1)}s`}
@@ -299,21 +313,30 @@ export default function Home() {
                 </main>
 
                 {/* Footer */}
-                <footer className="mt-12 border-t border-gray-200 bg-white py-6">
-                    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
-                        Built for marketing teams to estimate eligible audience counts from large datasets
+                <footer className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 mt-8">
+                    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row gap-1 sm:gap-3 items-center justify-center text-sm text-gray-500 dark:text-slate-400">
+                        <span>Built by <span className="font-semibold text-gray-700 dark:text-slate-200">Chaw Thinn</span> · 2026</span>
+                        <span className="hidden sm:inline text-gray-300 dark:text-slate-600">·</span>
+                        <a
+                            href="https://chawthinn.github.io/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                        >
+                            chawthinn.github.io
+                        </a>
                     </div>
                 </footer>
 
                 {/* Filter Modal */}
                 {showFilterModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
-                        <div className="bg-white rounded-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto smooth-shadow">
-                            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                                <h2 className="text-lg font-bold text-gray-900">Export Audience</h2>
+                        <div className="bg-white dark:bg-slate-900 rounded-lg w-full sm:max-w-md max-h-[90vh] overflow-y-auto smooth-shadow">
+                            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Export Audience</h2>
                                 <button
                                     onClick={() => setShowFilterModal(false)}
-                                    className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                                    className="text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl leading-none"
                                 >
                                     ×
                                 </button>

@@ -7,146 +7,221 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-# 🎯 Campaign Audience Sizing Tool
 
-A web-based campaign segment sizing tool for marketing teams to estimate eligible audience counts from large datasets in real time. This tool enables users to upload and instantly view the intersection count between two large CSV files (3M+ rows), replacing slow Excel workflows.
+# 🎯 Marketing Audience Segmentation Tool
 
-## Features
+A web app that lets marketing teams compare two large audience CSVs (millions of rows) and instantly see the **intersection**, **union (merger)**, or **exclusion** between them — then export the result, optionally split into A/B segments for campaign testing.
 
-✅ **Real-Time Intersection Analysis** - Process millions of records instantly
-✅ **Interactive Venn Diagram** - Visual representation of set intersections
-✅ **Simple Export Flow** - Generate and download the intersected CSV directly
-✅ **Responsive Design** - One-page layout optimized for minimal scrolling
-✅ **Progress Tracking** - Real-time processing status
+Built to replace painful Excel/Sheets workflows where joining two 100MB+ files either crashes the spreadsheet or takes hours.
 
-## Tech Stack
+**Live:** [campaign-audience-sizing-tool.vercel.app](https://campaign-audience-sizing-tool.vercel.app)
+**Backend:** Google Cloud Run · **Frontend:** Vercel · **Storage:** Google Cloud Storage
 
-- **Frontend**: Next.js 14 + React 18 + TypeScript
-- **Styling**: Tailwind CSS + custom components
-- **State Management**: Zustand
-- **Backend**: FastAPI + Polars for CSV processing
-- **Visualization**: Custom SVG (Venn diagram)
+---
 
-## Project Structure
+## What it does
+
+| Operation | What you get | SQL equivalent |
+|---|---|---|
+| **Audience Intersection** | Users present in **both** files | `INNER JOIN` |
+| **Audience Merger** | All unique users from both files combined | `FULL OUTER JOIN` |
+| **Audience Exclusion** | Users in one file but **not** the other (direction switchable) | `LEFT ANTI JOIN` |
+
+For each operation you can:
+
+- Pick the **primary key column** per file (no more "must be first column" rule — works with mismatched schemas)
+- Preview the result in an **Excel-style grid** with global search, per-column filter, sortable headers, and pagination — all server-paginated so it's instant even on 1.7M-row results
+- **Export** the result as CSV, or randomly **split** into segments (50/50, 80/20, 70/30, or custom) packaged as a ZIP
+- Choose which **columns** to include in the export
+
+---
+
+## Architecture
 
 ```
+┌──────────────┐    HTTPS    ┌─────────────────┐
+│   Vercel     │ ──────────► │   Cloud Run     │
+│  (Next.js)   │ ◄────────── │   (FastAPI +    │
+└──────┬───────┘             │    Polars)      │
+       │                     └────────┬────────┘
+       │ direct upload via            │ read/write
+       │  signed URL                  │
+       ▼                              ▼
+   ┌─────────────────────────────────────────┐
+   │   Google Cloud Storage (cast-uploads-…) │
+   │   ├ uploads/   (user CSVs, 1-day TTL)   │
+   │   ├ dummy/     (sample data, kept)      │
+   │   └ results/   (job outputs)            │
+   └─────────────────────────────────────────┘
+```
+
+### Why this architecture
+
+- **Cloud Run** has a 32 MB HTTP/1 body limit, which would block any real-world audience file. We solve it by having the browser upload **directly to Cloud Storage** via signed URLs (bypassing Cloud Run entirely for the bytes), then calling the API with just the GCS paths.
+- **Result downloads** go the same way in reverse: backend writes result to GCS, returns a 302 redirect to a signed download URL. This also fixes Cloud Run's 32 MB *response* cap and means downloads work across any container instance even when the service autoscales.
+- **Polars** does the heavy CSV joins — lazy + streaming, multi-threaded. A 3M × 1.72M-row intersection runs in ~4 seconds on a 2 vCPU Cloud Run instance.
+
+---
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS (with dark mode), Zustand for state, Papa Parse for client-side header detection |
+| Backend | FastAPI, Polars (CSV joins), google-cloud-storage (signed URLs) |
+| Infra | Vercel (frontend hosting), Google Cloud Run (backend), Google Cloud Storage (uploads + results), Docker |
+
+---
+
+## Project structure
+
+```
+.
 ├── pages/
-│   ├── _app.tsx              # Next.js app wrapper
-│   ├── _document.tsx         # HTML document setup
-│   ├── index.tsx             # Main one-page interface
-│   └── api/                  # API routes (for future backend)
+│   ├── _app.tsx              # App wrapper + theme init script (avoids flash of light)
+│   ├── _document.tsx
+│   └── index.tsx             # Main page: layout, analyze handler, GCS upload logic
 ├── components/
-│   ├── FileUpload.tsx        # CSV file upload component
-│   ├── VennDiagram.tsx       # Venn diagram visualization
-│   ├── FilterPanel.tsx       # Filtering & export controls
-│   └── ResultsTable.tsx      # Paginated results display
+│   ├── FileUpload.tsx        # CSV upload + dummy picker + primary-key dropdowns
+│   ├── VennDiagram.tsx       # Tabs (Intersection/Merger/Exclusion) + SVG diagrams
+│   ├── ResultsTable.tsx      # Summary card with record counts
+│   ├── ResultsPreview.tsx    # Excel-style paginated grid with search/filter/sort
+│   └── FilterPanel.tsx       # Export modal: columns, random split, download
 ├── lib/
-│   ├── firebase.ts           # Firebase configuration
-│   ├── backend.ts            # Backend URL helpers
-│   └── store.ts              # Zustand state management
+│   ├── store.ts              # Zustand global state
+│   ├── backend.ts            # API URL builders
+│   └── theme.ts              # Light/dark mode hook + localStorage persistence
 ├── backend/
-│   ├── main.py               # FastAPI + Polars service
-│   └── requirements.txt      # Python dependencies
-├── utils/
-│   └── csvProcessor.ts       # CSV processing utilities
-├── styles/
-│   └── globals.css           # Global styles
-├── package.json
-├── tsconfig.json
-├── next.config.js
-├── tailwind.config.js
-└── postcss.config.js
+│   ├── main.py               # FastAPI: /process, /process-gcs, /upload-url,
+│   │                         #          /dummy-files, /preview, /downloads
+│   └── requirements.txt
+├── styles/globals.css
+├── Dockerfile                # Single image: serves on $PORT (Cloud Run) or 7860 (HF Spaces)
+├── .gcloudignore             # Keeps Cloud Build uploads small
+└── .github/workflows/sync-to-hub.yml   # Auto-sync to Hugging Face Spaces on main push
 ```
 
-## Getting Started
+---
+
+## API
+
+All endpoints return JSON unless noted.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Liveness check |
+| GET | `/dummy-files` | List pre-uploaded sample CSVs in GCS with their column headers |
+| POST | `/upload-url` | Generate a V4 signed PUT URL for direct browser → GCS upload |
+| POST | `/process` | Multipart upload + join (used for files < 25 MB) |
+| POST | `/process-gcs` | JSON body with `gcsPathA` / `gcsPathB` + operation params; runs the join on files already in GCS |
+| GET | `/preview/{job_id}` | Server-paginated preview with `?page`, `?page_size`, `?search`, `?sort_column`, `?sort_direction`, `?filters` (JSON) |
+| GET | `/downloads/{job_id}` | Returns a 302 redirect to a signed GCS download URL. Accepts `?columns=` (subset) and `?split=` (e.g. `50,50`) to filter/partition the output |
+
+---
+
+## Local development
 
 ### Prerequisites
-- Node.js 16+ and npm/yarn
-- Python 3.10+ for the FastAPI backend
+- Node.js 18+
+- Python 3.10+
 
-### Installation
+### Setup
 
-1. **Clone and install dependencies**
 ```bash
-cd "Campaign Audience Sizing Tool"
+# 1. Frontend
 npm install
-```
+cp .env.example .env       # then point NEXT_PUBLIC_BACKEND_URL at your local backend
 
-2. **Configure the backend URL**
-```bash
-set NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-```
-
-3. **Install and run the Python backend**
-```bash
+# 2. Backend
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+uvicorn main:app --reload --port 8000
 
-4. **Run development server**
-```bash
+# 3. Frontend (separate terminal)
 npm run dev
 ```
 
-5. **Open browser**
-Navigate to `http://localhost:3000`
+Open http://localhost:3000.
 
-## Usage
+Local dev skips the GCS upload path automatically for files under 25 MB and uses the multipart `/process` endpoint instead, so you don't need GCS configured locally for small test files.
 
-1. **Upload Files**
-   - Drag & drop or click to upload two CSV files
-   - Each file must have a unique ID in the first column
+### Environment variables
 
-2. **Analyze Intersection**
-   - Click "Analyze Intersection" button
-   - The FastAPI backend writes the result CSV and returns a download link
+| Variable | Where | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_BACKEND_URL` | Frontend (`.env` locally, Vercel project settings in prod) | Where the React app talks to FastAPI |
+| `GCS_BUCKET` | Backend (set on Cloud Run) | Name of the Cloud Storage bucket used for uploads, dummies, and results. If unset, GCS features are disabled and only the multipart `/process` path works |
 
-3. **Download Data**
-   - Click "Download CSV"
-   - The browser downloads the generated intersection file
+---
 
-## Performance
+## Deployment
 
-- **3M+ row files**: handled by the Python backend
-- **Polars execution**: streaming-friendly and multi-threaded
-- **Separated frontend/backend**: Next.js stays focused on UI
-
-## Future Enhancements
-
-- [ ] Queue-based processing for very large jobs
-- [ ] Firebase authentication
-- [ ] Cloud storage for file history
-- [ ] Advanced analytics (statistics, charts)
-- [ ] Duplicate detection
-- [ ] Data quality checks
-- [ ] Multi-file intersection
-
-## Building for Production
+### Backend → Google Cloud Run
 
 ```bash
-npm run build
-npm run start
+gcloud run deploy cast-backend \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 4Gi --cpu 2 \
+  --timeout 300 --max-instances 3 \
+  --port 7860 --cpu-boost \
+  --set-env-vars GCS_BUCKET=<your-bucket-name>
 ```
 
-## Environment Variables
+The Cloud Run service account needs:
+- `roles/storage.objectAdmin` on the bucket
+- `roles/iam.serviceAccountTokenCreator` on itself (so it can sign URLs without a private key file)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_BACKEND_URL` | Yes for Python split | FastAPI base URL, for example `http://localhost:8000` |
+### Cloud Storage bucket setup
 
-## Troubleshooting
+```bash
+BUCKET="cast-uploads-<your-project-number>"
 
-**"CSV not found" error**: Ensure first column contains unique IDs
+# Create bucket
+gcloud storage buckets create gs://$BUCKET --location=us-central1 --uniform-bucket-level-access
 
-**Processing is slow**: Large files (3M+ rows) are processed client-side. Consider Express backend for very large datasets.
+# CORS so the browser can PUT directly
+echo '[{"origin":["*"],"method":["PUT","GET","HEAD"],"responseHeader":["Content-Type"],"maxAgeSeconds":3600}]' > cors.json
+gcloud storage buckets update gs://$BUCKET --cors-file=cors.json
 
-**Download not working**: Check browser console for errors. CSV export requires write permissions.
+# Lifecycle: auto-delete uploaded files after 1 day (keeps dummy/ forever)
+echo '{"lifecycle":{"rule":[{"action":{"type":"Delete"},"condition":{"age":1,"matchesPrefix":["uploads/"]}}]}}' > lifecycle.json
+gcloud storage buckets update gs://$BUCKET --lifecycle-file=lifecycle.json
 
-## License
+# Upload sample data (optional)
+gcloud storage cp public/dummy_data/eligible_base_users.csv gs://$BUCKET/dummy/eligible_base_users.csv
+gcloud storage cp public/dummy_data/targeting_list.csv     gs://$BUCKET/dummy/targeting_list.csv
+```
 
-MIT
+### Frontend → Vercel
 
-## Support
+1. Import the repo at vercel.com/new
+2. Project settings → Environment Variables → add `NEXT_PUBLIC_BACKEND_URL` = your Cloud Run service URL
+3. Deploy
 
-For issues or feature requests, create a GitHub issue.
+### Alternate backend host: Hugging Face Spaces
+
+The repo includes `.github/workflows/sync-to-hub.yml` which auto-syncs `main` to a Hugging Face Space (Docker SDK). The Dockerfile listens on `$PORT` if set (Cloud Run) and falls back to 7860 (HF Spaces default).
+
+---
+
+## Performance notes
+
+| Operation | Local (laptop, 8 cores) | Cloud Run (2 vCPU + CPU boost) |
+|---|---|---|
+| Intersection on 3M × 1.72M rows | ~5 s | ~4 s |
+| Merger on same | ~9 s | ~10 s |
+| Exclusion on same | ~5 s | ~7 s |
+| Preview page (search across 3M rows) | ~1.5 s | ~1.7 s |
+| Download 86MB result | instant (file already local) | streamed via signed GCS URL |
+
+The main bottleneck on the deployed app is the **browser → GCS upload** for large files — bounded by the user's residential upload bandwidth. Uploads run in parallel for both files to roughly halve wall time.
+
+---
+
+## Credits
+
+Built by [Chaw Thinn](https://chawthinn.github.io/) · 2026
+
+MIT licensed.

@@ -149,32 +149,32 @@ export const ResultsPreview: React.FC = () => {
     }
 
     return (
-        <div className="bg-white rounded-lg smooth-shadow overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-lg smooth-shadow overflow-hidden">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
                 <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-gray-900">Data Preview</h3>
-                        <span className="text-xs text-gray-500">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">Data Preview</h3>
+                        <span className="text-xs text-gray-500 dark:text-slate-400">
                             Showing {startRow.toLocaleString()}–{endRow.toLocaleString()} of {totalRows.toLocaleString()}
                             {isFiltered && totalRows !== resultCount && (
                                 <> (filtered from {resultCount.toLocaleString()})</>
                             )}
                         </span>
                     </div>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-gray-400 dark:text-slate-500">
                         Search, sort, and filter across all {resultCount.toLocaleString()} records — click any column header to sort.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-slate-500 pointer-events-none" />
                         <input
                             type="text"
                             value={globalSearch}
                             onChange={(e) => setGlobalSearch(e.target.value)}
                             placeholder="Search all columns…"
-                            className="pl-7 pr-8 py-1.5 text-sm border border-gray-300 rounded-md w-56 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            className="pl-7 pr-8 py-1.5 text-sm border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 rounded-md w-56 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
                         {globalSearch && (
                             <button
@@ -201,9 +201,9 @@ export const ResultsPreview: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div className="relative overflow-auto max-h-[600px] border-t border-gray-200">
+            <div className="relative overflow-auto max-h-[600px] border-t border-gray-200 dark:border-slate-800">
                 <table className="w-full text-sm border-collapse">
-                    <thead className="sticky top-0 z-10 bg-gray-100">
+                    <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-slate-800">
                         <tr>
                             {displayHeaders.map((col) => {
                                 const isSorted = sortColumn === col
@@ -211,7 +211,7 @@ export const ResultsPreview: React.FC = () => {
                                     <th
                                         key={col}
                                         onClick={() => handleSort(col)}
-                                        className="text-left px-3 py-2 font-semibold text-gray-700 border-b border-r border-gray-300 cursor-pointer hover:bg-gray-200 select-none whitespace-nowrap"
+                                        className="text-left px-3 py-2 font-semibold text-gray-700 dark:text-slate-200 border-b border-r border-gray-300 dark:border-slate-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 select-none whitespace-nowrap"
                                     >
                                         <div className="flex items-center gap-1">
                                             <span>{col}</span>
@@ -229,14 +229,14 @@ export const ResultsPreview: React.FC = () => {
                             {displayHeaders.map((col) => (
                                 <th
                                     key={`filter-${col}`}
-                                    className="px-2 py-1 border-b border-r border-gray-300 bg-gray-50"
+                                    className="px-2 py-1 border-b border-r border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/70"
                                 >
                                     <input
                                         type="text"
                                         value={columnFilters[col] ?? ''}
                                         onChange={(e) => updateFilter(col, e.target.value)}
                                         placeholder="Filter…"
-                                        className="w-full px-2 py-1 text-xs font-normal border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full px-2 py-1 text-xs font-normal border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </th>
                             ))}
@@ -256,7 +256,9 @@ export const ResultsPreview: React.FC = () => {
                         {rows.map((row, rowIdx) => (
                             <tr
                                 key={rowIdx}
-                                className={rowIdx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}
+                                className={rowIdx % 2 === 0
+                                    ? 'bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-800'
+                                    : 'bg-gray-50 dark:bg-slate-800/40 hover:bg-blue-50 dark:hover:bg-slate-800'}
                             >
                                 {displayHeaders.map((col) => {
                                     const val = row[col]
@@ -266,7 +268,7 @@ export const ResultsPreview: React.FC = () => {
                                     return (
                                         <td
                                             key={col}
-                                            className="px-3 py-1.5 border-b border-r border-gray-200 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis text-gray-800"
+                                            className="px-3 py-1.5 border-b border-r border-gray-200 dark:border-slate-700 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis text-gray-800 dark:text-slate-200"
                                             title={display}
                                         >
                                             {display}
@@ -280,13 +282,13 @@ export const ResultsPreview: React.FC = () => {
             </div>
 
             {/* Pagination footer */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t border-gray-200 bg-gray-50 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 text-sm">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-slate-300">
                     <span>Rows per page:</span>
                     <select
                         value={pageSize}
                         onChange={(e) => setPageSize(Number(e.target.value))}
-                        className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                         {PAGE_SIZE_OPTIONS.map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
@@ -298,12 +300,12 @@ export const ResultsPreview: React.FC = () => {
                     <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1 || loading}
-                        className="p-1.5 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Previous page"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-gray-600 px-2">
+                    <span className="text-gray-600 dark:text-slate-300 px-2">
                         Page <input
                             type="number"
                             value={page}
@@ -311,7 +313,7 @@ export const ResultsPreview: React.FC = () => {
                                 const v = Number(e.target.value)
                                 if (!Number.isNaN(v) && v >= 1 && v <= totalPages) setPage(v)
                             }}
-                            className="w-14 text-center border border-gray-300 rounded px-1 py-0.5 text-sm"
+                            className="w-14 text-center border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded px-1 py-0.5 text-sm"
                             min={1}
                             max={totalPages}
                         /> of {totalPages.toLocaleString()}
@@ -319,7 +321,7 @@ export const ResultsPreview: React.FC = () => {
                     <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page >= totalPages || loading}
-                        className="p-1.5 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Next page"
                     >
                         <ChevronRight className="w-4 h-4" />

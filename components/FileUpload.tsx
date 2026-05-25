@@ -220,7 +220,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
         }
         return (
             <div className="mt-2">
-                <label className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
+                <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">
                     <Key className="w-3 h-3" />
                     Primary key (join column)
                 </label>
@@ -228,7 +228,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                     value={selected}
                     onChange={(e) => onChange(e.target.value)}
                     disabled={isProcessing}
-                    className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                    className="w-full text-sm px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                 >
                     {headers.map((h) => (
                         <option key={h} value={h}>{h}</option>
@@ -239,9 +239,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     }
 
     return (
-        <div className="space-y-3 p-4 bg-white rounded-lg smooth-shadow">
+        <div className="space-y-3 p-4 bg-white dark:bg-slate-900 rounded-lg smooth-shadow">
             <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-bold text-gray-900">Upload CSV Files</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Upload CSV Files</h2>
                 <button
                     onClick={() => {
                         setUseDummyData(!useDummyData)
@@ -252,7 +252,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                     }}
                     className={`px-3 py-1 rounded text-sm font-medium transition flex items-center gap-1 ${useDummyData
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-300 dark:hover:bg-slate-600'
                         }`}
                 >
                     <Database className="w-4 h-4" />
@@ -261,16 +261,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
             </div>
 
             {useDummyData ? (
-                <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-3 pb-5">
+                <div className="space-y-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3 pb-5">
                     {/* File A Dropdown */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                             Set A (First Audience)
                         </label>
                         <div className="flex items-center gap-2">
                             <select
                                 onChange={(e) => { if (e.target.value) selectDummyFile(e.target.value, true) }}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">{fileA ? `✓ ${fileA.name}` : 'Select file...'}</option>
                                 {dummyFiles.map((file) => (
@@ -278,7 +278,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                                 ))}
                             </select>
                             {fileA && (
-                                <button onClick={() => setFileA(null)} className="px-2 py-2 text-red-600 hover:bg-red-50 rounded" title="Remove">
+                                <button
+                                    onClick={() => setFileA(null)}
+                                    disabled={isProcessing}
+                                    className="px-2 py-2 text-red-600 hover:bg-red-50 rounded disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    title={isProcessing ? 'Cannot remove while processing' : 'Remove'}
+                                >
                                     <X className="w-5 h-5" />
                                 </button>
                             )}
@@ -288,13 +293,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
                     {/* File B Dropdown */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                             Set B (Second Audience)
                         </label>
                         <div className="flex items-center gap-2">
                             <select
                                 onChange={(e) => { if (e.target.value) selectDummyFile(e.target.value, false) }}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">{fileB ? `✓ ${fileB.name}` : 'Select file...'}</option>
                                 {dummyFiles.map((file) => (
@@ -302,7 +307,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                                 ))}
                             </select>
                             {fileB && (
-                                <button onClick={() => setFileB(null)} className="px-2 py-2 text-red-600 hover:bg-red-50 rounded" title="Remove">
+                                <button
+                                    onClick={() => setFileB(null)}
+                                    disabled={isProcessing}
+                                    className="px-2 py-2 text-red-600 hover:bg-red-50 rounded disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                    title={isProcessing ? 'Cannot remove while processing' : 'Remove'}
+                                >
                                     <X className="w-5 h-5" />
                                 </button>
                             )}
@@ -311,18 +321,20 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                     </div>
                 </div>
             ) : (
-                <div className="space-y-3 bg-green-50 border border-green-200 rounded-lg p-3 pb-5">
+                <div className="space-y-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-3 pb-5">
                     {/* File A Upload */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                             Set A (First Audience)
                         </label>
                         {fileA ? (
-                            <div className="flex items-center justify-between px-4 py-3 bg-green-100 border border-green-300 rounded-lg">
-                                <span className="text-sm font-medium text-green-800">✓ {fileA.name}</span>
+                            <div className="flex items-center justify-between px-4 py-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-800 rounded-lg">
+                                <span className="text-sm font-medium text-green-800 dark:text-green-200">✓ {fileA.name}</span>
                                 <button
                                     onClick={() => { setFileA(null); if (refA.current) refA.current.value = '' }}
-                                    className="text-red-600 hover:text-red-800"
+                                    disabled={isProcessing}
+                                    className="text-red-600 hover:text-red-800 disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:text-gray-300"
+                                    title={isProcessing ? 'Cannot remove while processing' : 'Remove'}
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -330,8 +342,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         ) : (
                             <div
                                 className={`relative border-2 border-dashed rounded-lg p-4 transition cursor-pointer ${dragOverA
-                                    ? 'border-green-500 bg-green-100'
-                                    : 'border-gray-300 bg-white hover:border-green-500'
+                                    ? 'border-green-500 bg-green-100 dark:bg-green-900/30'
+                                    : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-green-500'
                                     }`}
                                 onClick={() => refA.current?.click()}
                                 onDrop={(e) => handleDrop(e, true)}
@@ -340,8 +352,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                             >
                                 <input ref={refA} type="file" accept=".csv" onChange={(e) => handleFileChange(e, true)} className="hidden" disabled={isProcessing} />
                                 <div className="flex flex-col items-center justify-center gap-2">
-                                    <Upload className="w-6 h-6 text-gray-400" />
-                                    <span className="text-sm text-gray-600">Click or drag CSV</span>
+                                    <Upload className="w-6 h-6 text-gray-400 dark:text-slate-500" />
+                                    <span className="text-sm text-gray-600 dark:text-slate-300">Click or drag CSV</span>
                                 </div>
                             </div>
                         )}
@@ -350,15 +362,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
                     {/* File B Upload */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                             Set B (Second Audience)
                         </label>
                         {fileB ? (
-                            <div className="flex items-center justify-between px-4 py-3 bg-green-100 border border-green-300 rounded-lg">
-                                <span className="text-sm font-medium text-green-800">✓ {fileB.name}</span>
+                            <div className="flex items-center justify-between px-4 py-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-800 rounded-lg">
+                                <span className="text-sm font-medium text-green-800 dark:text-green-200">✓ {fileB.name}</span>
                                 <button
                                     onClick={() => { setFileB(null); if (refB.current) refB.current.value = '' }}
-                                    className="text-red-600 hover:text-red-800"
+                                    disabled={isProcessing}
+                                    className="text-red-600 hover:text-red-800 disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:text-gray-300"
+                                    title={isProcessing ? 'Cannot remove while processing' : 'Remove'}
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -366,8 +380,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         ) : (
                             <div
                                 className={`relative border-2 border-dashed rounded-lg p-4 transition cursor-pointer ${dragOverB
-                                    ? 'border-green-500 bg-green-100'
-                                    : 'border-gray-300 bg-white hover:border-green-500'
+                                    ? 'border-green-500 bg-green-100 dark:bg-green-900/30'
+                                    : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-green-500'
                                     }`}
                                 onClick={() => refB.current?.click()}
                                 onDrop={(e) => handleDrop(e, false)}
@@ -376,8 +390,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                             >
                                 <input ref={refB} type="file" accept=".csv" onChange={(e) => handleFileChange(e, false)} className="hidden" disabled={isProcessing} />
                                 <div className="flex flex-col items-center justify-center gap-2">
-                                    <Upload className="w-6 h-6 text-gray-400" />
-                                    <span className="text-sm text-gray-600">Click or drag CSV</span>
+                                    <Upload className="w-6 h-6 text-gray-400 dark:text-slate-500" />
+                                    <span className="text-sm text-gray-600 dark:text-slate-300">Click or drag CSV</span>
                                 </div>
                             </div>
                         )}

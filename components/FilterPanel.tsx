@@ -136,8 +136,8 @@ export const FilterPanel: React.FC = () => {
     if (resultCount === 0) {
         return (
             <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">Export</h3>
-                <p className="text-gray-400 text-sm">No data available. Upload and process both CSV files first.</p>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Export</h3>
+                <p className="text-gray-400 dark:text-slate-500 text-sm">No data available. Upload and process both CSV files first.</p>
             </div>
         )
     }
@@ -160,34 +160,34 @@ export const FilterPanel: React.FC = () => {
             {headers.length > 0 && (
                 <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-gray-700">
-                            Columns <span className="text-gray-400 font-normal">({selected.length}/{headers.length})</span>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+                            Columns <span className="text-gray-400 dark:text-slate-500 font-normal">({selected.length}/{headers.length})</span>
                         </h4>
                         <div className="flex gap-2 text-xs">
                             <button
                                 onClick={selectAll}
                                 disabled={allSelected}
-                                className="text-blue-600 hover:text-blue-700 disabled:text-gray-300 disabled:cursor-not-allowed font-medium"
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:text-gray-300 dark:disabled:text-slate-600 disabled:cursor-not-allowed font-medium"
                             >
                                 All
                             </button>
-                            <span className="text-gray-300">|</span>
+                            <span className="text-gray-300 dark:text-slate-600">|</span>
                             <button
                                 onClick={selectNone}
                                 disabled={noneSelected}
-                                className="text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed font-medium"
+                                className="text-gray-600 dark:text-slate-300 hover:text-gray-800 disabled:text-gray-300 dark:disabled:text-slate-600 disabled:cursor-not-allowed font-medium"
                             >
                                 None
                             </button>
                         </div>
                     </div>
-                    <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-1.5 space-y-0.5 bg-gray-50">
+                    <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg p-1.5 space-y-0.5 bg-gray-50 dark:bg-slate-800/50">
                         {headers.map((col) => {
                             const checked = selected.includes(col)
                             return (
                                 <label
                                     key={col}
-                                    className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white cursor-pointer text-sm"
+                                    className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-white dark:hover:bg-slate-700 cursor-pointer text-sm"
                                 >
                                     <input
                                         type="checkbox"
@@ -197,8 +197,8 @@ export const FilterPanel: React.FC = () => {
                                     />
                                     {checked
                                         ? <CheckSquare className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                        : <Square className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-                                    <span className="font-mono text-xs text-gray-700 truncate">{col}</span>
+                                        : <Square className="w-4 h-4 text-gray-400 dark:text-slate-500 flex-shrink-0" />}
+                                    <span className="font-mono text-xs text-gray-700 dark:text-slate-200 truncate">{col}</span>
                                 </label>
                             )
                         })}
@@ -209,20 +209,20 @@ export const FilterPanel: React.FC = () => {
             {/* Random split */}
             <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                    <Shuffle className="w-3.5 h-3.5 text-gray-500" />
-                    <h4 className="text-sm font-semibold text-gray-700">
-                        Random split <span className="text-gray-400 font-normal">(optional)</span>
+                    <Shuffle className="w-3.5 h-3.5 text-gray-500 dark:text-slate-400" />
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+                        Random split <span className="text-gray-400 dark:text-slate-500 font-normal">(optional)</span>
                     </h4>
                 </div>
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
                     {SPLIT_PRESETS.map((preset) => (
                         <button
                             key={preset.value}
                             onClick={() => setSplitPreset(preset.value)}
                             className={`flex-1 px-2 py-1 text-xs font-medium rounded transition ${
                                 splitPreset === preset.value
-                                    ? 'bg-white text-blue-700 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
                             }`}
                         >
                             {preset.label}
@@ -231,7 +231,7 @@ export const FilterPanel: React.FC = () => {
                 </div>
                 {splitPreset === 'custom' && (
                     <div className="flex items-center gap-2 px-1 pt-0.5">
-                        <span className="text-xs font-medium text-gray-600 w-10">A: {customA}%</span>
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300 w-10">A: {customA}%</span>
                         <input
                             type="range"
                             min={1}
@@ -246,22 +246,22 @@ export const FilterPanel: React.FC = () => {
             </div>
 
             {/* Export Package Details */}
-            <div className="rounded-lg border border-gray-200 bg-slate-50 p-3 space-y-1.5">
-                <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+            <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 space-y-1.5">
+                <p className="text-xs font-bold text-gray-700 dark:text-slate-200 uppercase tracking-wide">
                     Export Package Details
                 </p>
                 <ul className="space-y-1">
                     {exportPackage.files.map((f) => (
-                        <li key={f.name} className="text-sm text-gray-700 leading-snug">
+                        <li key={f.name} className="text-sm text-gray-700 dark:text-slate-300 leading-snug">
                             <span className="mr-1">📄</span>
-                            <span className="font-mono font-semibold text-gray-900">{f.name}</span>
-                            <span className="text-gray-600"> — {f.count.toLocaleString()} unique records</span>
-                            {f.note && <span className="text-gray-500"> ({f.note})</span>}
+                            <span className="font-mono font-semibold text-gray-900 dark:text-slate-100">{f.name}</span>
+                            <span className="text-gray-600 dark:text-slate-400"> — {f.count.toLocaleString()} unique records</span>
+                            {f.note && <span className="text-gray-500 dark:text-slate-500"> ({f.note})</span>}
                         </li>
                     ))}
                 </ul>
                 {exportPackage.isZip && headers.length > 0 && (
-                    <p className="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 pt-1 border-t border-gray-200 dark:border-slate-700 mt-2">
                         Both files include {selected.length} selected column{selected.length === 1 ? '' : 's'}
                         {selected.length <= 5 && <> ({selected.join(', ')})</>}.
                     </p>

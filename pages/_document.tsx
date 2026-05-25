@@ -5,7 +5,7 @@ export default function Document() {
         <Html lang="en">
             <Head>
                 <meta charSet="utf-8" />
-                <meta name="description" content="Campaign Audience Sizing Tool" />
+                <meta name="description" content="Marketing Audience Segmentation Tool" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <body>

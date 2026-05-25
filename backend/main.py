@@ -34,7 +34,7 @@ JOBS_DIR = TMP_DIR / 'jobs'
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-app = FastAPI(title='Campaign Audience Sizing API')
+app = FastAPI(title='Marketing Audience Segmentation API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
@@ -657,4 +657,4 @@ def _split_filenames(parts: list[int]) -> list[str]:
 
 @app.get("/")
 def read_root():
-    return {"status": "healthy", "message": "Campaign Audience Sizing Backend is running"}
+    return {"status": "healthy", "message": "Marketing Audience Segmentation backend is running"}
