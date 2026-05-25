@@ -6,17 +6,17 @@ const TABS = [
     {
         key: 'intersection' as const,
         label: 'Audience Intersection',
-        activeClass: 'border-blue-600 text-blue-700 bg-blue-50',
+        activeClass: 'border-blue-600 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40',
     },
     {
         key: 'merger' as const,
         label: 'Audience Merger',
-        activeClass: 'border-purple-600 text-purple-700 bg-purple-50',
+        activeClass: 'border-purple-600 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40',
     },
     {
         key: 'exclusion' as const,
         label: 'Audience Exclusion',
-        activeClass: 'border-orange-600 text-orange-700 bg-orange-50',
+        activeClass: 'border-orange-600 text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/40',
     },
 ]
 
@@ -56,7 +56,7 @@ export const VennDiagram: React.FC = () => {
                             disabled={isProcessing}
                             className={`flex-1 px-4 py-3 text-center border-b-2 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 isActive
-                                    ? `${tab.activeClass} border-current dark:bg-slate-800`
+                                    ? `${tab.activeClass} border-current`
                                     : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200'
                             }`}
                         >
@@ -154,10 +154,10 @@ const DirectionToggle: React.FC<DirectionToggleProps> = ({ direction, onChange, 
     // Collapsed pill — visible after analysis to keep the result visible without scrolling
     if (!expanded) {
         return (
-            <div className="mb-3 flex items-center justify-between px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="mb-3 flex items-center justify-between px-3 py-1.5 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 rounded-lg">
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Direction:</span>
-                    <span className="font-semibold text-orange-700">{currentLabel}</span>
+                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Direction:</span>
+                    <span className="font-semibold text-orange-700 dark:text-orange-300">{currentLabel}</span>
                 </div>
                 <button
                     onClick={() => setExpanded(true)}
@@ -180,18 +180,18 @@ const DirectionToggle: React.FC<DirectionToggleProps> = ({ direction, onChange, 
     return (
         <div className="mb-5">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Direction</span>
+                <span className="text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide">Direction</span>
                 <button
                     onClick={swap}
                     disabled={disabled}
-                    className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50"
+                    className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-medium disabled:opacity-50"
                     title="Swap direction"
                 >
                     <ArrowLeftRight className="w-3 h-3" />
                     Swap
                 </button>
             </div>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
                 {options.map((opt) => {
                     const isActive = direction === opt.value
                     return (
@@ -201,12 +201,12 @@ const DirectionToggle: React.FC<DirectionToggleProps> = ({ direction, onChange, 
                             disabled={disabled}
                             className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition disabled:cursor-not-allowed ${
                                 isActive
-                                    ? 'bg-white text-orange-700 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white dark:bg-slate-700 text-orange-700 dark:text-orange-300 shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
                             }`}
                         >
                             <div className="font-semibold">{opt.label}</div>
-                            <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-500' : 'text-gray-400'}`}>
+                            <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400 dark:text-slate-500'}`}>
                                 {opt.sub}
                             </div>
                         </button>
@@ -295,19 +295,19 @@ const IntersectionView: React.FC<IntersectionViewProps> = ({
             </div>
 
             <div className="flex-1 space-y-4">
-                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                    <p className="text-sm text-gray-600">Set A (Total)</p>
-                    <p className="text-2xl font-bold text-indigo-600">{fmt(setACount)}</p>
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg border border-indigo-200 dark:border-indigo-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set A (Total)</p>
+                    <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{fmt(setACount)}</p>
                 </div>
-                <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
-                    <p className="text-sm text-gray-600">Set B (Total)</p>
-                    <p className="text-2xl font-bold text-pink-600">{fmt(setBCount)}</p>
+                <div className="p-4 bg-pink-50 dark:bg-pink-950/40 rounded-lg border border-pink-200 dark:border-pink-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set B (Total)</p>
+                    <p className="text-2xl font-bold text-pink-600 dark:text-pink-300">{fmt(setBCount)}</p>
                 </div>
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-gray-600">Intersection</p>
-                    <p className="text-2xl font-bold text-blue-700">{fmt(intersectionCount)}</p>
-                    {overlapPct && <p className="text-xs text-gray-500 mt-1">{overlapPct}</p>}
-                    {preview && <p className="text-xs text-blue-600/80 mt-1">Records in both Set A and Set B</p>}
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Intersection</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{fmt(intersectionCount)}</p>
+                    {overlapPct && <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{overlapPct}</p>}
+                    {preview && <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1">Records in both Set A and Set B</p>}
                 </div>
             </div>
         </div>
@@ -361,23 +361,23 @@ const MergerView: React.FC<MergerViewProps> = ({
             </div>
 
             <div className="flex-1 space-y-3">
-                <div className="p-3 bg-violet-50 rounded-lg border border-violet-200">
-                    <p className="text-sm text-gray-600">Set A (Total)</p>
-                    <p className="text-xl font-bold text-violet-600">{fmt(setACount)}</p>
+                <div className="p-3 bg-violet-50 dark:bg-violet-950/40 rounded-lg border border-violet-200 dark:border-violet-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set A (Total)</p>
+                    <p className="text-xl font-bold text-violet-600 dark:text-violet-300">{fmt(setACount)}</p>
                 </div>
-                <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-                    <p className="text-sm text-gray-600">Set B (Total)</p>
-                    <p className="text-xl font-bold text-cyan-600">{fmt(setBCount)}</p>
+                <div className="p-3 bg-cyan-50 dark:bg-cyan-950/40 rounded-lg border border-cyan-200 dark:border-cyan-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set B (Total)</p>
+                    <p className="text-xl font-bold text-cyan-600 dark:text-cyan-300">{fmt(setBCount)}</p>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                    <p className="text-sm text-gray-600">Merger (Union)</p>
-                    <p className="text-xl font-bold text-purple-700">{fmt(resultCount)}</p>
-                    <p className="text-xs text-purple-600/80 mt-1">All unique records</p>
+                <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-lg border border-purple-200 dark:border-purple-900">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Merger (Union)</p>
+                    <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{fmt(resultCount)}</p>
+                    <p className="text-xs text-purple-600/80 dark:text-purple-400/80 mt-1">All unique records</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm text-gray-600">Overlap</p>
-                    <p className="text-xl font-bold text-gray-700">{fmt(intersectionCount)}</p>
-                    <p className="text-xs text-gray-500 mt-1">In both sets</p>
+                <div className="p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Overlap</p>
+                    <p className="text-xl font-bold text-gray-700 dark:text-slate-200">{fmt(intersectionCount)}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">In both sets</p>
                 </div>
             </div>
         </div>
@@ -467,28 +467,28 @@ const ExclusionView: React.FC<ExclusionViewProps> = ({
             </div>
 
             <div className="flex-1 space-y-3">
-                <div className="p-3 rounded-lg border border-orange-200 bg-orange-50">
-                    <p className="text-xs uppercase tracking-wide text-orange-700">{directionLabel}</p>
-                    <p className="text-2xl font-bold text-orange-700 mt-1">
+                <div className="p-3 rounded-lg border border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/40">
+                    <p className="text-xs uppercase tracking-wide text-orange-700 dark:text-orange-300">{directionLabel}</p>
+                    <p className="text-2xl font-bold text-orange-700 dark:text-orange-300 mt-1">
                         {preview ? '—' : resultCount.toLocaleString()}
                     </p>
-                    <p className="text-xs text-orange-600/80 mt-1">{directionDescription}</p>
+                    <p className="text-xs text-orange-600/80 dark:text-orange-400/80 mt-1">{directionDescription}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-sm text-gray-600">Set A (Total)</p>
-                    <p className="text-xl font-bold text-slate-800">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set A (Total)</p>
+                    <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
                         {preview ? '—' : setACount.toLocaleString()}
                     </p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-sm text-gray-600">Set B (Total)</p>
-                    <p className="text-xl font-bold text-slate-800">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Set B (Total)</p>
+                    <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
                         {preview ? '—' : setBCount.toLocaleString()}
                     </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm text-gray-600">Overlap (excluded)</p>
-                    <p className="text-xl font-bold text-gray-700">
+                <div className="p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
+                    <p className="text-sm text-gray-600 dark:text-slate-300">Overlap (excluded)</p>
+                    <p className="text-xl font-bold text-gray-700 dark:text-slate-200">
                         {preview ? '—' : intersectionCount.toLocaleString()}
                     </p>
                 </div>

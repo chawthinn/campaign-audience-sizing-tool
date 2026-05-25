@@ -262,6 +262,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
             {useDummyData ? (
                 <div className="space-y-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3 pb-5">
+                    {(dummyError || dummyFiles.length === 0) && (
+                        <div className="text-xs px-3 py-2 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200">
+                            {dummyError
+                                ? <>Couldn't load dummy files: {dummyError}</>
+                                : <>No dummy files available. The backend needs <code className="px-1 bg-amber-100 dark:bg-amber-900/50 rounded">GCS_BUCKET</code> set to expose sample data.</>}
+                        </div>
+                    )}
                     {/* File A Dropdown */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
