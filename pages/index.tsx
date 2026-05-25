@@ -67,6 +67,8 @@ export default function Home() {
     const fileB = useAudienceStore((state) => state.fileB)
     const fileAKey = useAudienceStore((state) => state.fileAKey)
     const fileBKey = useAudienceStore((state) => state.fileBKey)
+    const fileAGcsPath = useAudienceStore((state) => state.fileAGcsPath)
+    const fileBGcsPath = useAudienceStore((state) => state.fileBGcsPath)
     const isProcessing = useAudienceStore((state) => state.isProcessing)
     const setProcessing = useAudienceStore((state) => state.setProcessing)
     const setResults = useAudienceStore((state) => state.setResults)
@@ -95,17 +97,24 @@ export default function Home() {
         setProcessingElapsedSeconds(0)
         setProcessing(true, 0)
         try {
-            // Cloud Run rejects HTTP/1 bodies over ~32 MB. For anything bigger,
-            // upload each file directly to Cloud Storage via signed URL, then
-            // call /process-gcs with just the GCS paths.
+            // Pick the upload path:
+            //   - If both files are already in GCS (dummies), skip upload entirely.
+            //   - Else if either is > 25 MB, upload to GCS via signed URL (avoids Cloud Run's 32 MB body cap).
+            //   - Else use the multipart /process endpoint.
             const LARGE_FILE_THRESHOLD = 25 * 1024 * 1024 // 25 MB
-            const useGcsUpload = fileA.size > LARGE_FILE_THRESHOLD || fileB.size > LARGE_FILE_THRESHOLD
+            const bothInGcs = !!fileAGcsPath && !!fileBGcsPath
+            const useGcsUpload = bothInGcs
+                || fileA.size > LARGE_FILE_THRESHOLD
+                || fileB.size > LARGE_FILE_THRESHOLD
 
             let response: Response
 
             if (useGcsUpload) {
-                const gcsPathA = await uploadFileToGcs(fileA, 'fileA.csv')
-                const gcsPathB = await uploadFileToGcs(fileB, 'fileB.csv')
+                // Re-use pre-existing GCS paths (dummies) when present; only upload what's actually local.
+                const [gcsPathA, gcsPathB] = await Promise.all([
+                    fileAGcsPath || uploadFileToGcs(fileA, 'fileA.csv'),
+                    fileBGcsPath || uploadFileToGcs(fileB, 'fileB.csv'),
+                ])
 
                 response = await fetch(buildApiUrl('/process-gcs'), {
                     method: 'POST',

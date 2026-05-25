@@ -305,6 +305,39 @@ def _require_gcs() -> 'type':
     return _gcs_storage.Client
 
 
+@app.get('/dummy-files')
+async def list_dummies() -> dict[str, Any]:
+    """List pre-uploaded dummy CSVs in GCS under dummy/ with their column headers.
+
+    Lets the frontend skip the upload phase for dummies — they're already in the bucket
+    and can be passed straight to /process-gcs.
+    """
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return {'available': False, 'files': []}
+
+    client = _gcs_storage.Client()
+    bucket = client.bucket(GCS_BUCKET)
+
+    files: list[dict[str, Any]] = []
+    for blob in bucket.list_blobs(prefix='dummy/'):
+        if not blob.name.endswith('.csv'):
+            continue
+        # Read the first ~16KB to extract the header row (enough for any reasonable CSV)
+        try:
+            head = blob.download_as_bytes(start=0, end=16 * 1024).decode('utf-8', errors='replace')
+            first_line = head.split('\n', 1)[0].rstrip('\r')
+            headers = [h.strip().strip('"') for h in first_line.split(',') if h.strip()]
+        except Exception:
+            headers = []
+        files.append({
+            'name': blob.name.removeprefix('dummy/'),
+            'gcsPath': blob.name,
+            'sizeBytes': blob.size,
+            'headers': headers,
+        })
+    return {'available': True, 'files': files}
+
+
 @app.post('/upload-url')
 async def upload_url(request: Request) -> dict[str, str]:
     """Generate a V4 signed PUT URL so the browser can upload a CSV straight to GCS."""

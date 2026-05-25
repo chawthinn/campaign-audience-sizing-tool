@@ -26,6 +26,13 @@ export interface AudienceState {
     setFileAKey: (key: string) => void
     setFileBKey: (key: string) => void
 
+    // GCS-resident references — set when the file is already in GCS (e.g. dummy fixtures)
+    // so we can skip the browser → GCS upload phase on analyze.
+    fileAGcsPath: string
+    fileBGcsPath: string
+    setFileAGcsPath: (path: string) => void
+    setFileBGcsPath: (path: string) => void
+
     // Results state
     resultCount: number        // main result count (intersection or union)
     intersectionCount: number  // always the inner-join overlap count
@@ -99,13 +106,13 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     fileB: null,
     setFileA: (file) => set(
         file === null
-            ? { fileA: null, fileAHeaders: [], fileAKey: '' }
-            : { fileA: file }
+            ? { fileA: null, fileAHeaders: [], fileAKey: '', fileAGcsPath: '' }
+            : { fileA: file, fileAGcsPath: '' } // clear gcsPath on real-file selection
     ),
     setFileB: (file) => set(
         file === null
-            ? { fileB: null, fileBHeaders: [], fileBKey: '' }
-            : { fileB: file }
+            ? { fileB: null, fileBHeaders: [], fileBKey: '', fileBGcsPath: '' }
+            : { fileB: file, fileBGcsPath: '' }
     ),
 
     // CSV header detection
@@ -124,6 +131,11 @@ export const useAudienceStore = create<AudienceState>((set) => ({
     })),
     setFileAKey: (key) => set({ fileAKey: key }),
     setFileBKey: (key) => set({ fileBKey: key }),
+
+    fileAGcsPath: '',
+    fileBGcsPath: '',
+    setFileAGcsPath: (path) => set({ fileAGcsPath: path }),
+    setFileBGcsPath: (path) => set({ fileBGcsPath: path }),
 
     // Initial results state
     ...EMPTY_RESULTS,
@@ -169,6 +181,8 @@ export const useAudienceStore = create<AudienceState>((set) => ({
             fileBHeaders: [],
             fileAKey: '',
             fileBKey: '',
+            fileAGcsPath: '',
+            fileBGcsPath: '',
             ...EMPTY_RESULTS,
             isProcessing: false,
             progress: 0,

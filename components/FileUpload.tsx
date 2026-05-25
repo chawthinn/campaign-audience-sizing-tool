@@ -2,15 +2,18 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Upload, X, Database, Key } from 'lucide-react'
 import Papa from 'papaparse'
 import { useAudienceStore } from '@/lib/store'
+import { buildApiUrl } from '@/lib/backend'
 
 export interface FileUploadProps {
     onFileSelect: (fileA: File | null, fileB: File | null) => void
 }
 
-const DUMMY_FILES = [
-    { name: 'eligible_base_users.csv', path: '/dummy_data/eligible_base_users.csv' },
-    { name: 'targeting_list.csv', path: '/dummy_data/targeting_list.csv' },
-]
+interface DummyFile {
+    name: string
+    gcsPath: string
+    sizeBytes: number
+    headers: string[]
+}
 
 // Read just the first row of a CSV file (no full-file load)
 async function readCsvHeaders(file: File): Promise<string[]> {
@@ -34,7 +37,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     const setFileBHeaders = useAudienceStore((state) => state.setFileBHeaders)
     const setFileAKey = useAudienceStore((state) => state.setFileAKey)
     const setFileBKey = useAudienceStore((state) => state.setFileBKey)
+    const setFileAGcsPath = useAudienceStore((state) => state.setFileAGcsPath)
+    const setFileBGcsPath = useAudienceStore((state) => state.setFileBGcsPath)
+    const fileAGcsPath = useAudienceStore((state) => state.fileAGcsPath)
+    const fileBGcsPath = useAudienceStore((state) => state.fileBGcsPath)
     const isProcessing = useAudienceStore((state) => state.isProcessing)
+
+    const [dummyFiles, setDummyFiles] = useState<DummyFile[]>([])
+    const [dummyError, setDummyError] = useState<string | null>(null)
 
     const [useDummyData, setUseDummyData] = useState(false)
     const [dragOverA, setDragOverA] = useState(false)
@@ -47,6 +57,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     // Re-read headers when file changes
     useEffect(() => {
         if (!fileA) return undefined
+        // If this is a GCS-resident dummy, headers were already set by selectDummyFile.
+        if (fileAGcsPath) return undefined
         let cancelled = false
         readCsvHeaders(fileA)
             .then((headers) => {
@@ -69,6 +81,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
     useEffect(() => {
         if (!fileB) return undefined
+        if (fileBGcsPath) return undefined
         let cancelled = false
         readCsvHeaders(fileB)
             .then((headers) => {
@@ -144,18 +157,46 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
         if (isSetA) setDragOverA(false); else setDragOverB(false)
     }
 
-    const loadDummyFile = async (path: string, isSetA: boolean) => {
-        try {
-            const response = await fetch(path)
-            const blob = await response.blob()
-            const filename = path.split('/').pop() || 'file.csv'
-            const file = new File([blob], filename, { type: 'text/csv' })
-            if (isSetA) setFileA(file)
-            else setFileB(file)
-            onFileSelect(isSetA ? file : fileA, isSetA ? fileB : file)
-        } catch (error) {
-            alert('Error loading dummy file: ' + (error instanceof Error ? error.message : 'Unknown'))
+    // Fetch the list of available dummy CSVs from the backend (which lists what's in GCS)
+    useEffect(() => {
+        if (!useDummyData) return undefined
+        let cancelled = false
+        fetch(buildApiUrl('/dummy-files'))
+            .then((r) => r.json())
+            .then((data) => {
+                if (cancelled) return
+                if (!data.available) {
+                    setDummyError('Dummy files are only available when the backend has GCS configured.')
+                    setDummyFiles([])
+                } else {
+                    setDummyError(null)
+                    setDummyFiles(data.files || [])
+                }
+            })
+            .catch((err) => {
+                if (cancelled) return
+                setDummyError(err instanceof Error ? err.message : 'Failed to fetch dummy list')
+            })
+        return () => { cancelled = true }
+    }, [useDummyData])
+
+    // Pick a dummy: skip the download/re-upload — set headers + GCS path directly in the store.
+    // /process-gcs will read from the GCS path we hand it.
+    const selectDummyFile = (gcsPath: string, isSetA: boolean) => {
+        const dummy = dummyFiles.find((d) => d.gcsPath === gcsPath)
+        if (!dummy) return
+        // A synthetic File placeholder so existing "is a file selected?" checks pass.
+        const placeholder = new File([''], dummy.name, { type: 'text/csv' })
+        if (isSetA) {
+            setFileA(placeholder)
+            setFileAHeaders(dummy.headers)
+            setFileAGcsPath(dummy.gcsPath)
+        } else {
+            setFileB(placeholder)
+            setFileBHeaders(dummy.headers)
+            setFileBGcsPath(dummy.gcsPath)
         }
+        onFileSelect(isSetA ? placeholder : fileA, isSetA ? fileB : placeholder)
     }
 
     const renderKeyPicker = (
@@ -228,12 +269,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         </label>
                         <div className="flex items-center gap-2">
                             <select
-                                onChange={(e) => { if (e.target.value) loadDummyFile(e.target.value, true) }}
+                                onChange={(e) => { if (e.target.value) selectDummyFile(e.target.value, true) }}
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">{fileA ? `✓ ${fileA.name}` : 'Select file...'}</option>
-                                {DUMMY_FILES.map((file) => (
-                                    <option key={file.path} value={file.path}>{file.name}</option>
+                                {dummyFiles.map((file) => (
+                                    <option key={file.gcsPath} value={file.gcsPath}>{file.name}</option>
                                 ))}
                             </select>
                             {fileA && (
@@ -252,12 +293,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                         </label>
                         <div className="flex items-center gap-2">
                             <select
-                                onChange={(e) => { if (e.target.value) loadDummyFile(e.target.value, false) }}
+                                onChange={(e) => { if (e.target.value) selectDummyFile(e.target.value, false) }}
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">{fileB ? `✓ ${fileB.name}` : 'Select file...'}</option>
-                                {DUMMY_FILES.map((file) => (
-                                    <option key={file.path} value={file.path}>{file.name}</option>
+                                {dummyFiles.map((file) => (
+                                    <option key={file.gcsPath} value={file.gcsPath}>{file.name}</option>
                                 ))}
                             </select>
                             {fileB && (
