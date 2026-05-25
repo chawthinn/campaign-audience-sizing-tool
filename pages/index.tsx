@@ -267,13 +267,16 @@ export default function Home() {
                     {/* Grid Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
                         {/* Left Column: Upload */}
-                        <div className="lg:col-span-1">
+                        <div className="lg:col-span-1 flex flex-col">
                             <FileUpload onFileSelect={handleFileSelect} />
+
+                            {/* Flex spacer pushes button to align with Export on the right */}
+                            <div className="flex-grow min-h-4" />
 
                             <button
                                 onClick={handleProcess}
                                 disabled={!fileA || !fileB || !fileAKey || !fileBKey || isProcessing}
-                                className={`w-full mt-4 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg transition smooth-shadow hover-lift ${buttonCfg.className}`}
+                                className={`w-full disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg transition smooth-shadow hover-lift ${buttonCfg.className}`}
                             >
                                 {isProcessing ? 'Processing...' : buttonLabel}
                             </button>
@@ -288,20 +291,18 @@ export default function Home() {
                         </div>
 
                         {/* Right Side: Diagram + Filter Button */}
-                        <div className="lg:col-span-2">
-                            <div className="space-y-4">
-                                <VennDiagram />
+                        <div className="lg:col-span-2 flex flex-col">
+                            <VennDiagram />
 
-                                {resultCount > 0 && (
-                                    <button
-                                        onClick={() => setShowFilterModal(true)}
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                        Export Audience
-                                    </button>
-                                )}
-                            </div>
+                            {resultCount > 0 && (
+                                <button
+                                    onClick={() => setShowFilterModal(true)}
+                                    className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    Export Audience
+                                </button>
+                            )}
                         </div>
                     </div>
 
