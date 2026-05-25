@@ -33,4 +33,7 @@ COPY --chown=user:user ./backend /app
 EXPOSE 7860
 
 # Start uvicorn. ${PORT:-7860} = use $PORT if set (Cloud Run), else 7860 (HF Spaces).
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]
+# --proxy-headers + --forwarded-allow-ips='*' make url_for() return https:// behind
+# Cloud Run / any reverse proxy (otherwise download URLs come back as http:// and
+# the browser blocks them as mixed content on HTTPS frontends).
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860} --proxy-headers --forwarded-allow-ips='*'"]

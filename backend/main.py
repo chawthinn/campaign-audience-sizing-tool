@@ -13,7 +13,7 @@ from typing import Annotated, Any
 import polars as pl
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 # Optional GCS support — only loaded in deployments that set GCS_BUCKET
 GCS_BUCKET = os.environ.get('GCS_BUCKET', '').strip()
@@ -197,6 +197,66 @@ async def health() -> dict[str, str]:
     return {'status': 'ok'}
 
 
+def _gcs_upload_result(local_path: Path, gcs_object: str) -> bool:
+    """Best-effort upload of a finished result file to GCS. Returns True on success."""
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return False
+    try:
+        client = _gcs_storage.Client()
+        bucket = client.bucket(GCS_BUCKET)
+        bucket.blob(gcs_object).upload_from_filename(str(local_path))
+        return True
+    except Exception:
+        return False
+
+
+def _ensure_local_result(job_id: str) -> Path | None:
+    """Make sure the result.csv for this job exists on local disk; pull from GCS if needed.
+
+    Returns the local path, or None if the result is unavailable.
+    """
+    job_dir = JOBS_DIR / job_id
+    local = job_dir / 'result.csv'
+    if local.exists():
+        return local
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return None
+    try:
+        job_dir.mkdir(parents=True, exist_ok=True)
+        client = _gcs_storage.Client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(f'results/{job_id}/result.csv')
+        if not blob.exists():
+            return None
+        blob.download_to_filename(str(local))
+        return local
+    except Exception:
+        return None
+
+
+def _gcs_signed_download_url(gcs_object: str, download_filename: str, content_type: str = 'text/csv') -> str | None:
+    """Generate a V4 signed GET URL for an object in GCS. Returns None if GCS unavailable."""
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return None
+    try:
+        credentials, _ = _google_auth_default()
+        credentials.refresh(_google_auth_requests.Request())
+        client = _gcs_storage.Client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(gcs_object)
+        return blob.generate_signed_url(
+            version='v4',
+            expiration=timedelta(minutes=15),
+            method='GET',
+            response_disposition=f'attachment; filename="{download_filename}"',
+            response_type=content_type,
+            service_account_email=getattr(credentials, 'service_account_email', None),
+            access_token=getattr(credentials, 'token', None),
+        )
+    except Exception:
+        return None
+
+
 def _run_join(
     request: Request,
     file_a_path: Path,
@@ -240,6 +300,9 @@ def _run_join(
 
         result_path = job_dir / 'result.csv'
         result_df.write_csv(str(result_path))
+        # Also stash result in GCS so /downloads can serve it from any container
+        # instance and bypass Cloud Run's 32 MB HTTP/1 response cap.
+        _gcs_upload_result(result_path, f'results/{job_id}/result.csv')
         processing_seconds = round(time.perf_counter() - started_at, 2)
 
         return {
@@ -420,8 +483,8 @@ async def preview(
     filters: str = '',
 ) -> dict[str, Any]:
     """Paginated preview of the result CSV with search/sort/per-column filter."""
-    result_path = JOBS_DIR / job_id / 'result.csv'
-    if not result_path.exists():
+    result_path = _ensure_local_result(job_id)
+    if result_path is None:
         raise HTTPException(status_code=404, detail='Result not found')
 
     page = max(1, page)
@@ -485,11 +548,14 @@ async def preview(
         404: {'description': 'Result not found'},
     },
 )
-async def download_file(job_id: str, columns: str = '', split: str = '') -> FileResponse:
+async def download_file(job_id: str, columns: str = '', split: str = ''):
+    """Serve a downloadable file. If GCS is configured, returns a 302 redirect to a
+    signed GCS URL (bypasses Cloud Run's 32 MB response cap and works across container
+    instances). Otherwise falls back to FileResponse from local disk.
+    """
     job_dir = JOBS_DIR / job_id
-    base_result_path = job_dir / 'result.csv'
-
-    if not base_result_path.exists():
+    base_result_path = _ensure_local_result(job_id)
+    if base_result_path is None:
         raise HTTPException(status_code=404, detail='Result not found. Please reprocess the files.')
 
     action_txt = job_dir / 'action.txt'
@@ -521,26 +587,31 @@ async def download_file(job_id: str, columns: str = '', split: str = '') -> File
         if not split_parts or any(p <= 0 for p in split_parts) or sum(split_parts) != 100:
             raise HTTPException(status_code=400, detail='split percentages must be positive and sum to 100')
 
+    def _serve(local_path: Path, download_name: str, media_type: str, gcs_object: str):
+        """Either redirect to a signed GCS URL or stream the local file."""
+        # Make sure the artifact is in GCS so any instance can serve it later too
+        _gcs_upload_result(local_path, gcs_object)
+        signed = _gcs_signed_download_url(gcs_object, download_name, media_type)
+        if signed:
+            return RedirectResponse(url=signed, status_code=302)
+        return FileResponse(path=str(local_path), filename=download_name, media_type=media_type)
+
     # --- No split → serve a CSV (full or column-filtered) ---
     if not split_parts:
-        serve_path = base_result_path
-        if use_columns is not None:
-            col_hash = hashlib.md5(','.join(use_columns).encode('utf-8')).hexdigest()[:10]
-            filtered_path = job_dir / f'result_{col_hash}.csv'
-            if not filtered_path.exists():
-                (pl.scan_csv(str(base_result_path), encoding='utf8-lossy')
-                    .select(use_columns)
-                    .collect()
-                    .write_csv(str(filtered_path)))
-            serve_path = filtered_path
-        return FileResponse(
-            path=str(serve_path),
-            filename=f'{action}_{stamp}.csv',
-            media_type='text/csv',
-        )
+        if use_columns is None:
+            return _serve(base_result_path, f'{action}_{stamp}.csv', 'text/csv',
+                          f'results/{job_id}/result.csv')
+        col_hash = hashlib.md5(','.join(use_columns).encode('utf-8')).hexdigest()[:10]
+        filtered_path = job_dir / f'result_{col_hash}.csv'
+        if not filtered_path.exists():
+            (pl.scan_csv(str(base_result_path), encoding='utf8-lossy')
+                .select(use_columns)
+                .collect()
+                .write_csv(str(filtered_path)))
+        return _serve(filtered_path, f'{action}_{stamp}.csv', 'text/csv',
+                      f'results/{job_id}/result_{col_hash}.csv')
 
     # --- Split → build a ZIP with one CSV per group ---
-    # Bumped v2: changed inner filename scheme to semantic names
     cache_key = f"v2|split={'-'.join(map(str, split_parts))}|cols={','.join(use_columns) if use_columns else 'all'}"
     cache_hash = hashlib.md5(cache_key.encode('utf-8')).hexdigest()[:10]
     zip_path = job_dir / f'split_{cache_hash}.zip'
@@ -561,7 +632,7 @@ async def download_file(job_id: str, columns: str = '', split: str = '') -> File
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
             for i, pct in enumerate(split_parts):
                 if i == len(split_parts) - 1:
-                    chunk = df.slice(offset)  # last group absorbs rounding remainder
+                    chunk = df.slice(offset)
                 else:
                     size = (total * pct) // 100
                     chunk = df.slice(offset, size)
@@ -569,11 +640,8 @@ async def download_file(job_id: str, columns: str = '', split: str = '') -> File
                 csv_bytes = chunk.write_csv()
                 zf.writestr(inner_names[i], csv_bytes)
 
-    return FileResponse(
-        path=str(zip_path),
-        filename=f'{action}_{stamp}.zip',
-        media_type='application/zip',
-    )
+    return _serve(zip_path, f'{action}_{stamp}.zip', 'application/zip',
+                  f'results/{job_id}/split_{cache_hash}.zip')
 
 
 def _split_filenames(parts: list[int]) -> list[str]:
