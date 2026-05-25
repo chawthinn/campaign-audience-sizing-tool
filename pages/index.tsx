@@ -40,7 +40,7 @@ async function uploadFileToGcs(file: File, suggestedName: string): Promise<strin
         try {
             const body = await urlResp.json()
             if (body?.detail) detail = body.detail
-        } catch {}
+        } catch { }
         throw new Error(`Could not get upload URL: ${detail}`)
     }
     const { uploadUrl, gcsPath, contentType: signedContentType } = await urlResp.json()
@@ -220,8 +220,25 @@ export default function Home() {
         <>
             <Head>
                 <title>Marketing Audience Segmentation Tool</title>
-                <meta name="description" content="Real-time audience intersection and merger analysis" />
+                <meta name="description" content="High-performance web app for marketing teams to intersect, merge, and exclude multi-million-row audience files in seconds." />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+                {/* Open Graph (LinkedIn, Facebook, Slack, Discord previews) */}
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://campaign-audience-sizing-tool.vercel.app/" />
+                <meta property="og:site_name" content="Marketing Audience Segmentation Tool" />
+                <meta property="og:title" content="Marketing Audience Segmentation Tool" />
+                <meta property="og:description" content="Process multi-gigabyte audience files instantly. Intersection, merger, exclusion + A/B split exports. Built with Polars + FastAPI on Google Cloud Run." />
+                <meta property="og:image" content="https://campaign-audience-sizing-tool.vercel.app/og-thumbnail.png" />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:alt" content="Marketing Audience Segmentation Tool dashboard preview" />
+
+                {/* Twitter / X card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="Marketing Audience Segmentation Tool" />
+                <meta name="twitter:description" content="Process multi-gigabyte audience files instantly. Intersection, merger, exclusion + A/B split exports." />
+                <meta name="twitter:image" content="https://campaign-audience-sizing-tool.vercel.app/og-thumbnail.png" />
             </Head>
 
             <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
@@ -234,7 +251,7 @@ export default function Home() {
                                     🎯 Marketing Audience Segmentation Tool
                                 </h1>
                                 <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                                    Audience intersection &amp; merger analysis for marketing campaigns
+                                    Process multi-gigabyte datasets without Excel row limits. Instantly export optimized target lists.
                                 </p>
                             </div>
                             <div className="flex items-center gap-1">
@@ -315,17 +332,24 @@ export default function Home() {
 
                 {/* Footer */}
                 <footer className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 mt-8">
-                    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row gap-1 sm:gap-3 items-center justify-center text-sm text-gray-500 dark:text-slate-400">
-                        <span>Built by <span className="font-semibold text-gray-700 dark:text-slate-200">Chaw Thinn</span> · 2026</span>
-                        <span className="hidden sm:inline text-gray-300 dark:text-slate-600">·</span>
-                        <a
-                            href="https://chawthinn.github.io/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                        >
-                            chawthinn.github.io
-                        </a>
+                    <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row gap-2 items-center justify-between text-sm text-gray-500 dark:text-slate-400">
+                        {/* Left Side */}
+                        <span>
+                            Built by <span className="font-semibold text-gray-700 dark:text-slate-200">Chaw Thinn</span> · 2026
+                        </span>
+
+                        {/* Right Side */}
+                        <p className="text-zinc-600 dark:text-zinc-400 text-center sm:text-right">
+                            Check out my full portfolio and other projects at{" "}
+                            <a
+                                href="https://chawthinn.github.io/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline"
+                            >
+                                chawthinn.github.io
+                            </a>
+                        </p>
                     </div>
                 </footer>
 

@@ -21,8 +21,7 @@ export function readStoredTheme(): Theme {
     if (typeof window === 'undefined') return 'light'
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored === 'dark' || stored === 'light') return stored
-    // Fall back to OS preference on first visit
-    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark'
+    // Default to light on first visit (OS preference deliberately ignored).
     return 'light'
 }
 

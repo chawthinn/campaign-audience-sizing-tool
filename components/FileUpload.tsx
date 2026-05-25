@@ -45,6 +45,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
     const [dummyFiles, setDummyFiles] = useState<DummyFile[]>([])
     const [dummyError, setDummyError] = useState<string | null>(null)
+    const [dummyLoading, setDummyLoading] = useState(false)
 
     const [useDummyData, setUseDummyData] = useState(false)
     const [dragOverA, setDragOverA] = useState(false)
@@ -161,6 +162,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     useEffect(() => {
         if (!useDummyData) return undefined
         let cancelled = false
+        setDummyLoading(true)
+        setDummyError(null)
         fetch(buildApiUrl('/dummy-files'))
             .then((r) => r.json())
             .then((data) => {
@@ -176,6 +179,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
             .catch((err) => {
                 if (cancelled) return
                 setDummyError(err instanceof Error ? err.message : 'Failed to fetch dummy list')
+            })
+            .finally(() => {
+                if (!cancelled) setDummyLoading(false)
             })
         return () => { cancelled = true }
     }, [useDummyData])
@@ -262,13 +268,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
             {useDummyData ? (
                 <div className="space-y-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3 pb-5">
-                    {(dummyError || dummyFiles.length === 0) && (
+                    {dummyLoading ? (
+                        <div className="text-xs px-3 py-2 rounded bg-blue-100 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-blue-800 dark:text-blue-200">
+                            Loading sample files…
+                        </div>
+                    ) : (dummyError || dummyFiles.length === 0) ? (
                         <div className="text-xs px-3 py-2 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200">
                             {dummyError
                                 ? <>Couldn't load dummy files: {dummyError}</>
                                 : <>No dummy files available. The backend needs <code className="px-1 bg-amber-100 dark:bg-amber-900/50 rounded">GCS_BUCKET</code> set to expose sample data.</>}
                         </div>
-                    )}
+                    ) : null}
                     {/* File A Dropdown */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">

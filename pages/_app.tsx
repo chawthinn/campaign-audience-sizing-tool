@@ -9,12 +9,8 @@ const themeInitScript = `
 (function() {
     try {
         var stored = localStorage.getItem('cast-theme');
-        var theme = stored;
-        if (theme !== 'dark' && theme !== 'light') {
-            theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark' : 'light';
-        }
-        if (theme === 'dark') document.documentElement.classList.add('dark');
+        // Default to light; only switch to dark if the user explicitly chose it.
+        if (stored === 'dark') document.documentElement.classList.add('dark');
     } catch (e) {}
 })();
 `
