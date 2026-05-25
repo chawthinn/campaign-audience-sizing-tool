@@ -27,7 +27,8 @@ except ImportError:
 
 
 BASE_DIR = Path(__file__).resolve().parent
-TMP_DIR = BASE_DIR / 'tmp'
+# TMP_DIR = BASE_DIR / 'tmp'
+TMP_DIR = Path('/tmp/app_data')
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 JOBS_DIR = TMP_DIR / 'jobs'
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
@@ -552,3 +553,7 @@ def _split_filenames(parts: list[int]) -> list[str]:
         return ['segment_a.csv', 'segment_b.csv']
     # Fallback: segment_a.csv, segment_b.csv, segment_c.csv, ...
     return [f'segment_{chr(ord("a") + i)}.csv' for i in range(len(parts))]
+
+@app.get("/")
+def read_root():
+    return {"status": "healthy", "message": "Campaign Audience Sizing Backend is running"}
