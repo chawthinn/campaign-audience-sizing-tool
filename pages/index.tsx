@@ -24,6 +24,38 @@ const BUTTON_CONFIG = {
     },
 } as const
 
+// Ask the backend for a signed PUT URL, then upload the file straight to GCS.
+// Returns the GCS object path (`uploads/<id>/<name>`) for the caller to pass to /process-gcs.
+async function uploadFileToGcs(file: File, suggestedName: string): Promise<string> {
+    const contentType = file.type || 'text/csv'
+
+    const urlResp = await fetch(buildApiUrl('/upload-url'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: suggestedName, contentType }),
+    })
+    if (!urlResp.ok) {
+        let detail = `HTTP ${urlResp.status}`
+        try {
+            const body = await urlResp.json()
+            if (body?.detail) detail = body.detail
+        } catch {}
+        throw new Error(`Could not get upload URL: ${detail}`)
+    }
+    const { uploadUrl, gcsPath, contentType: signedContentType } = await urlResp.json()
+
+    const putResp = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': signedContentType || contentType },
+        body: file,
+    })
+    if (!putResp.ok) {
+        throw new Error(`Upload to storage failed: HTTP ${putResp.status}`)
+    }
+
+    return gcsPath as string
+}
+
 export default function Home() {
     const [showFilterModal, setShowFilterModal] = useState(false)
     const processingStartRef = useRef<number | null>(null)
@@ -63,20 +95,45 @@ export default function Home() {
         setProcessingElapsedSeconds(0)
         setProcessing(true, 0)
         try {
-            const formData = new FormData()
-            formData.append('fileA', fileA)
-            formData.append('fileB', fileB)
-            formData.append('action', action)
-            formData.append('key_a', fileAKey)
-            formData.append('key_b', fileBKey)
-            if (action === 'exclusion') {
-                formData.append('direction', exclusionDirection)
-            }
+            // Cloud Run rejects HTTP/1 bodies over ~32 MB. For anything bigger,
+            // upload each file directly to Cloud Storage via signed URL, then
+            // call /process-gcs with just the GCS paths.
+            const LARGE_FILE_THRESHOLD = 25 * 1024 * 1024 // 25 MB
+            const useGcsUpload = fileA.size > LARGE_FILE_THRESHOLD || fileB.size > LARGE_FILE_THRESHOLD
 
-            const response = await fetch(buildApiUrl('/process'), {
-                method: 'POST',
-                body: formData,
-            })
+            let response: Response
+
+            if (useGcsUpload) {
+                const gcsPathA = await uploadFileToGcs(fileA, 'fileA.csv')
+                const gcsPathB = await uploadFileToGcs(fileB, 'fileB.csv')
+
+                response = await fetch(buildApiUrl('/process-gcs'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gcsPathA,
+                        gcsPathB,
+                        action,
+                        keyA: fileAKey,
+                        keyB: fileBKey,
+                        direction: action === 'exclusion' ? exclusionDirection : undefined,
+                    }),
+                })
+            } else {
+                const formData = new FormData()
+                formData.append('fileA', fileA)
+                formData.append('fileB', fileB)
+                formData.append('action', action)
+                formData.append('key_a', fileAKey)
+                formData.append('key_b', fileBKey)
+                if (action === 'exclusion') {
+                    formData.append('direction', exclusionDirection)
+                }
+                response = await fetch(buildApiUrl('/process'), {
+                    method: 'POST',
+                    body: formData,
+                })
+            }
 
             if (!response.ok) {
                 let detail = `HTTP ${response.status}`

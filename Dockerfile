@@ -11,6 +11,10 @@ ENV HOME=/home/user \
 # Set the working directory inside the container to /app
 WORKDIR /app
 
+# Make /app writable by 'user' so the app can mkdir /app/tmp at startup.
+# (Without this, /app stays root-owned and Cloud Run fails with PermissionError.)
+RUN chown user:user /app
+
 # COPY FROM THE BACKEND FOLDER:
 # Copy requirements first from the backend directory, ensuring the new user owns it
 COPY --chown=user:user ./backend/requirements.txt /app/requirements.txt
@@ -25,8 +29,8 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 # Copy only your backend application code into the container
 COPY --chown=user:user ./backend /app
 
-# Expose port 7860 (Hugging Face Spaces default port)
+# Expose port (HF Spaces uses 7860; Cloud Run injects its own via $PORT)
 EXPOSE 7860
 
-# Start the FastAPI application using Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Start uvicorn. ${PORT:-7860} = use $PORT if set (Cloud Run), else 7860 (HF Spaces).
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]

@@ -1,0 +1,26 @@
+# Frontend build and dependencies
+node_modules
+.next
+out
+build
+
+# Python virtual environments and caches
+venv
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# Heavy local data files
+*.csv
+dummy_data/
+.dvc/
+
+# Git and IDE configurations
+.git
+.gitignore
+.dockerignore
+.vscode
+.claude

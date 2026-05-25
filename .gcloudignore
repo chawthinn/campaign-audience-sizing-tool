@@ -1,0 +1,18 @@
+# Cloud Build only needs the backend folder + Dockerfile.
+# Ignore everything else to avoid walking huge / OneDrive-placeholder dirs.
+
+# Ignore everything by default
+**/*
+
+# Then explicitly include what the Dockerfile needs
+!Dockerfile
+!.dockerignore
+!backend/
+!backend/**
+
+# Always ignore these even inside backend
+backend/tmp/
+backend/__pycache__/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store

@@ -6,7 +6,7 @@ import os
 import uuid
 import time
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -14,6 +14,16 @@ import polars as pl
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+
+# Optional GCS support — only loaded in deployments that set GCS_BUCKET
+GCS_BUCKET = os.environ.get('GCS_BUCKET', '').strip()
+try:
+    from google.cloud import storage as _gcs_storage
+    from google.auth import default as _google_auth_default
+    from google.auth.transport import requests as _google_auth_requests
+    _GCS_AVAILABLE = True
+except ImportError:
+    _GCS_AVAILABLE = False
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -186,33 +196,21 @@ async def health() -> dict[str, str]:
     return {'status': 'ok'}
 
 
-@app.post(
-    '/process',
-    responses={
-        400: {'description': 'Bad request'},
-        500: {'description': 'Processing failed'},
-    },
-)
-async def process(
+def _run_join(
     request: Request,
-    file_a: Annotated[UploadFile, File(..., alias='fileA')],
-    file_b: Annotated[UploadFile, File(..., alias='fileB')],
-    action: Annotated[str, Form()] = 'intersection',
-    direction: Annotated[str, Form()] = 'a_minus_b',
-    key_a: Annotated[str, Form()] = '',
-    key_b: Annotated[str, Form()] = '',
+    file_a_path: Path,
+    file_b_path: Path,
+    job_id: str,
+    job_dir: Path,
+    action: str,
+    direction: str,
+    key_a: str,
+    key_b: str,
 ) -> dict[str, Any]:
+    """Shared post-upload processing: runs the join, writes result.csv, returns the response dict."""
     if action not in ('intersection', 'merger', 'exclusion'):
         raise HTTPException(status_code=400, detail='action must be intersection, merger, or exclusion')
 
-    job_id = uuid.uuid4().hex
-    job_dir = JOBS_DIR / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-
-    file_a_path = job_dir / 'fileA.csv'
-    file_b_path = job_dir / 'fileB.csv'
-    await _save_upload_to(file_a, file_a_path)
-    await _save_upload_to(file_b, file_b_path)
     action_label = f'{action}_{direction}' if action == 'exclusion' else action
     (job_dir / 'action.txt').write_text(action_label)
 
@@ -262,6 +260,114 @@ async def process(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post(
+    '/process',
+    responses={
+        400: {'description': 'Bad request'},
+        500: {'description': 'Processing failed'},
+    },
+)
+async def process(
+    request: Request,
+    file_a: Annotated[UploadFile, File(..., alias='fileA')],
+    file_b: Annotated[UploadFile, File(..., alias='fileB')],
+    action: Annotated[str, Form()] = 'intersection',
+    direction: Annotated[str, Form()] = 'a_minus_b',
+    key_a: Annotated[str, Form()] = '',
+    key_b: Annotated[str, Form()] = '',
+) -> dict[str, Any]:
+    """Multipart upload path — fine for small files (<32 MB on Cloud Run)."""
+    job_id = uuid.uuid4().hex
+    job_dir = JOBS_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    file_a_path = job_dir / 'fileA.csv'
+    file_b_path = job_dir / 'fileB.csv'
+    await _save_upload_to(file_a, file_a_path)
+    await _save_upload_to(file_b, file_b_path)
+
+    return _run_join(request, file_a_path, file_b_path, job_id, job_dir, action, direction, key_a, key_b)
+
+
+# ---------------------------------------------------------------------------
+# GCS-backed upload path (bypasses Cloud Run's 32 MB body limit)
+# ---------------------------------------------------------------------------
+
+def _require_gcs() -> 'type':
+    """Return the storage Client class, raising 503 if GCS isn't configured."""
+    if not _GCS_AVAILABLE:
+        raise HTTPException(status_code=503, detail='google-cloud-storage package not installed in this build')
+    if not GCS_BUCKET:
+        raise HTTPException(status_code=503, detail='Direct upload not configured: GCS_BUCKET env var not set')
+    return _gcs_storage.Client
+
+
+@app.post('/upload-url')
+async def upload_url(request: Request) -> dict[str, str]:
+    """Generate a V4 signed PUT URL so the browser can upload a CSV straight to GCS."""
+    storage_client_cls = _require_gcs()
+
+    body = await request.json()
+    filename = str(body.get('filename', 'upload.csv'))
+    content_type = str(body.get('contentType', 'text/csv'))
+
+    safe_name = filename.replace('..', '_').replace('/', '_').replace('\\', '_')
+    upload_id = uuid.uuid4().hex
+    object_name = f'uploads/{upload_id}/{safe_name}'
+
+    credentials, _ = _google_auth_default()
+    credentials.refresh(_google_auth_requests.Request())
+
+    client = storage_client_cls()
+    bucket = client.bucket(GCS_BUCKET)
+    blob = bucket.blob(object_name)
+
+    url = blob.generate_signed_url(
+        version='v4',
+        expiration=timedelta(minutes=15),
+        method='PUT',
+        content_type=content_type,
+        service_account_email=getattr(credentials, 'service_account_email', None),
+        access_token=getattr(credentials, 'token', None),
+    )
+
+    return {'uploadUrl': url, 'gcsPath': object_name, 'contentType': content_type}
+
+
+@app.post('/process-gcs')
+async def process_gcs(request: Request) -> dict[str, Any]:
+    """Process two CSVs that the client uploaded directly to GCS via signed URL."""
+    storage_client_cls = _require_gcs()
+
+    body = await request.json()
+    gcs_path_a = str(body.get('gcsPathA', '')).strip()
+    gcs_path_b = str(body.get('gcsPathB', '')).strip()
+    if not gcs_path_a or not gcs_path_b:
+        raise HTTPException(status_code=400, detail='gcsPathA and gcsPathB are required')
+
+    action = str(body.get('action', 'intersection'))
+    direction = str(body.get('direction', 'a_minus_b'))
+    key_a = str(body.get('keyA', ''))
+    key_b = str(body.get('keyB', ''))
+
+    job_id = uuid.uuid4().hex
+    job_dir = JOBS_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    file_a_path = job_dir / 'fileA.csv'
+    file_b_path = job_dir / 'fileB.csv'
+
+    client = storage_client_cls()
+    bucket = client.bucket(GCS_BUCKET)
+    try:
+        bucket.blob(gcs_path_a).download_to_filename(str(file_a_path))
+        bucket.blob(gcs_path_b).download_to_filename(str(file_b_path))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f'Failed to fetch uploaded files from GCS: {exc}') from exc
+
+    return _run_join(request, file_a_path, file_b_path, job_id, job_dir, action, direction, key_a, key_b)
 
 
 @app.get(
