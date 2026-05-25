@@ -268,27 +268,28 @@ const IntersectionView: React.FC<IntersectionViewProps> = ({
                         </>
                     )}
 
-                    <text x="45" y="135" textAnchor="middle" fontSize="14"
-                        fontWeight="bold" fill={preview ? '#9ca3af' : '#1f2937'}>
+                    <text x="45" y="135" textAnchor="middle" fontSize="14" fontWeight="bold"
+                        className={preview ? 'fill-gray-400 dark:fill-slate-500' : 'fill-gray-800 dark:fill-slate-100'}>
                         {fmt(aOnlyCount)}
                     </text>
                     <text x="140" y={preview ? 128 : 130} textAnchor="middle"
-                        fontSize={preview ? 14 : 16}
-                        fontWeight="bold" fill={preview ? '#1e40af' : '#1f2937'}>
+                        fontSize={preview ? 14 : 16} fontWeight="bold"
+                        className={preview ? 'fill-blue-800 dark:fill-blue-300' : 'fill-gray-800 dark:fill-slate-100'}>
                         {preview ? '?' : intersectionCount.toLocaleString()}
                     </text>
                     {preview && (
-                        <text x="140" y="143" textAnchor="middle" fontSize="9" fill="#1e3a8a">
+                        <text x="140" y="143" textAnchor="middle" fontSize="9"
+                            className="fill-blue-900 dark:fill-blue-300">
                             returned
                         </text>
                     )}
-                    <text x="225" y="135" textAnchor="middle" fontSize="14"
-                        fontWeight="bold" fill={preview ? '#9ca3af' : '#1f2937'}>
+                    <text x="225" y="135" textAnchor="middle" fontSize="14" fontWeight="bold"
+                        className={preview ? 'fill-gray-400 dark:fill-slate-500' : 'fill-gray-800 dark:fill-slate-100'}>
                         {fmt(bOnlyCount)}
                     </text>
-                    <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
-                    <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
-                    <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
+                    <text x="30" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set A</text>
+                    <text x="220" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set B</text>
+                    <text x="140" y="225" textAnchor="middle" fontSize="11" className="fill-gray-500 dark:fill-slate-400">
                         {preview ? 'Will return: Users exist in both files' : `Users in both lists: ${intersectionCount.toLocaleString()}`}
                     </text>
                 </svg>
@@ -339,22 +340,22 @@ const MergerView: React.FC<MergerViewProps> = ({
                         fill="#06b6d4" opacity={preview ? 0.55 : 0.45}
                         stroke="#0891b2" strokeWidth="2" />
 
-                    <text x="45" y="135" textAnchor="middle" fontSize="14"
-                        fontWeight="bold" fill={preview ? '#5b21b6' : '#1f2937'}>
+                    <text x="45" y="135" textAnchor="middle" fontSize="14" fontWeight="bold"
+                        className={preview ? 'fill-violet-700 dark:fill-violet-300' : 'fill-gray-800 dark:fill-slate-100'}>
                         {preview ? '?' : aOnlyCount.toLocaleString()}
                     </text>
-                    <text x="140" y="125" textAnchor="middle" fontSize="13"
-                        fontWeight="bold" fill={preview ? '#374151' : '#1f2937'}>
+                    <text x="140" y="125" textAnchor="middle" fontSize="13" fontWeight="bold"
+                        className={preview ? 'fill-gray-700 dark:fill-slate-200' : 'fill-gray-800 dark:fill-slate-100'}>
                         {preview ? '?' : intersectionCount.toLocaleString()}
                     </text>
-                    <text x="140" y="142" textAnchor="middle" fontSize="9" fill="#6b7280">overlap</text>
-                    <text x="225" y="135" textAnchor="middle" fontSize="14"
-                        fontWeight="bold" fill={preview ? '#155e75' : '#1f2937'}>
+                    <text x="140" y="142" textAnchor="middle" fontSize="9" className="fill-gray-500 dark:fill-slate-400">overlap</text>
+                    <text x="225" y="135" textAnchor="middle" fontSize="14" fontWeight="bold"
+                        className={preview ? 'fill-cyan-700 dark:fill-cyan-300' : 'fill-gray-800 dark:fill-slate-100'}>
                         {preview ? '?' : bOnlyCount.toLocaleString()}
                     </text>
-                    <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
-                    <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
-                    <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
+                    <text x="30" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set A</text>
+                    <text x="220" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set B</text>
+                    <text x="140" y="225" textAnchor="middle" fontSize="11" className="fill-gray-500 dark:fill-slate-400">
                         {preview ? 'Will return: Total unique users combined' : `Total unique users: ${resultCount.toLocaleString()}`}
                     </text>
                 </svg>
@@ -436,31 +437,32 @@ const ExclusionView: React.FC<ExclusionViewProps> = ({
                     <circle cx="195" cy="130" r="70" fill="url(#excluded-hash)" opacity="0.55" clipPath="url(#circleA-clip)" />
 
                     {/* A region count */}
-                    <text x="45" y="135" textAnchor="middle" fontSize={isAMinusB ? 16 : 12}
-                          fontWeight="bold" fill={isAMinusB ? '#9a3412' : '#6b7280'}>
+                    <text x="45" y="135" textAnchor="middle" fontSize={isAMinusB ? 16 : 12} fontWeight="bold"
+                        className={isAMinusB ? 'fill-orange-800 dark:fill-orange-300' : 'fill-gray-500 dark:fill-slate-500'}>
                         {shownInA}
                     </text>
 
                     {/* Overlap label */}
-                    <text x="140" y="128" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#374151">
+                    <text x="140" y="128" textAnchor="middle" fontSize="10" fontWeight="bold"
+                        className="fill-gray-700 dark:fill-slate-200">
                         excluded
                     </text>
-                    <text x="140" y="142" textAnchor="middle" fontSize="9" fill="#6b7280">
+                    <text x="140" y="142" textAnchor="middle" fontSize="9" className="fill-gray-500 dark:fill-slate-400">
                         {preview ? '—' : intersectionCount.toLocaleString()}
                     </text>
 
                     {/* B region count */}
-                    <text x="225" y="135" textAnchor="middle" fontSize={!isAMinusB ? 16 : 12}
-                          fontWeight="bold" fill={!isAMinusB ? '#9a3412' : '#6b7280'}>
+                    <text x="225" y="135" textAnchor="middle" fontSize={!isAMinusB ? 16 : 12} fontWeight="bold"
+                        className={!isAMinusB ? 'fill-orange-800 dark:fill-orange-300' : 'fill-gray-500 dark:fill-slate-500'}>
                         {shownInB}
                     </text>
 
                     {/* Set labels */}
-                    <text x="30" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set A</text>
-                    <text x="220" y="40" fontSize="12" fontWeight="bold" fill="#1f2937">Set B</text>
+                    <text x="30" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set A</text>
+                    <text x="220" y="40" fontSize="12" fontWeight="bold" className="fill-gray-800 dark:fill-slate-100">Set B</text>
 
                     {/* Result footer */}
-                    <text x="140" y="225" textAnchor="middle" fontSize="11" fill="#6b7280">
+                    <text x="140" y="225" textAnchor="middle" fontSize="11" className="fill-gray-500 dark:fill-slate-400">
                         {preview ? `Will return: ${directionLabel}` : `Result (${directionLabel}): ${resultCount.toLocaleString()}`}
                     </text>
                 </svg>
