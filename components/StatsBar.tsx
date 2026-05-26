@@ -7,8 +7,13 @@ interface Stats {
     runs: number
 }
 
-const SESSION_FLAG = 'cast-visit-counted'
+const VISIT_FLAG = 'cast-last-visit-date'
 const REFRESH_EVENT = 'cast-stats-bump'
+
+function todayKey(): string {
+    const d = new Date()
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
 
 /** Dispatched by the page after a successful analyze to trigger a stats refetch. */
 export function bumpStats() {
@@ -34,12 +39,13 @@ export const StatsBar: React.FC = () => {
                 })
                 .catch(() => { /* stats are best-effort; ignore */ })
 
-        // Increment visit once per browser session
-        const alreadyCounted = typeof window !== 'undefined' && sessionStorage.getItem(SESSION_FLAG)
-        if (alreadyCounted) {
+        // Increment at most once per browser per calendar day (handles multiple tabs)
+        const today = todayKey()
+        const lastVisit = typeof window !== 'undefined' ? localStorage.getItem(VISIT_FLAG) : null
+        if (lastVisit === today) {
             fetchStats('/stats', 'GET')
         } else {
-            if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_FLAG, '1')
+            if (typeof window !== 'undefined') localStorage.setItem(VISIT_FLAG, today)
             fetchStats('/stats/visit', 'POST')
         }
 
@@ -61,7 +67,7 @@ export const StatsBar: React.FC = () => {
                     <Eye className="w-3.5 h-3.5" />
                     <span className="font-medium text-gray-500 dark:text-slate-400">
                         {visits === null ? '—' : visits.toLocaleString()}
-                    </span> visitors
+                    </span> visits
                 </span>
                 <span className="text-gray-300 dark:text-slate-700">·</span>
                 <span className="flex items-center gap-1.5">
