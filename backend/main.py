@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import uuid
 import time
 import zipfile
@@ -197,6 +198,62 @@ async def health() -> dict[str, str]:
     return {'status': 'ok'}
 
 
+# ---------------------------------------------------------------------------
+# Tiny visit + run counter persisted as a JSON blob in GCS
+# ---------------------------------------------------------------------------
+
+STATS_OBJECT = 'stats/counters.json'
+
+
+def _read_stats() -> dict[str, int]:
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return {'visits': 0, 'runs': 0}
+    try:
+        client = _gcs_storage.Client()
+        blob = client.bucket(GCS_BUCKET).blob(STATS_OBJECT)
+        if not blob.exists():
+            return {'visits': 0, 'runs': 0}
+        data = json.loads(blob.download_as_text())
+        return {'visits': int(data.get('visits', 0)), 'runs': int(data.get('runs', 0))}
+    except Exception:
+        return {'visits': 0, 'runs': 0}
+
+
+def _bump_stat(key: str) -> dict[str, int]:
+    """Best-effort read-modify-write of the stats counter. Returns latest counts."""
+    if not _GCS_AVAILABLE or not GCS_BUCKET:
+        return {'visits': 0, 'runs': 0}
+    try:
+        client = _gcs_storage.Client()
+        blob = client.bucket(GCS_BUCKET).blob(STATS_OBJECT)
+        stats = {'visits': 0, 'runs': 0}
+        if blob.exists():
+            try:
+                stats.update(json.loads(blob.download_as_text()))
+            except Exception:
+                pass
+        stats[key] = int(stats.get(key, 0)) + 1
+        blob.upload_from_string(json.dumps(stats), content_type='application/json')
+        return stats
+    except Exception:
+        return _read_stats()
+
+
+@app.get('/stats')
+async def get_stats() -> dict[str, int]:
+    return _read_stats()
+
+
+@app.post('/stats/visit')
+async def stats_visit() -> dict[str, int]:
+    """Increment visit count in the background, return the current snapshot immediately."""
+    current = _read_stats()
+    threading.Thread(target=_bump_stat, args=('visits',), daemon=True).start()
+    # Reflect the pending increment in the response so the UI shows it right away
+    current['visits'] = current.get('visits', 0) + 1
+    return current
+
+
 def _gcs_upload_result(local_path: Path, gcs_object: str) -> bool:
     """Best-effort upload of a finished result file to GCS. Returns True on success."""
     if not _GCS_AVAILABLE or not GCS_BUCKET:
@@ -303,6 +360,8 @@ def _run_join(
         # Also stash result in GCS so /downloads can serve it from any container
         # instance and bypass Cloud Run's 32 MB HTTP/1 response cap.
         _gcs_upload_result(result_path, f'results/{job_id}/result.csv')
+        # Fire-and-forget so the GCS round-trip doesn't block the response
+        threading.Thread(target=_bump_stat, args=('runs',), daemon=True).start()
         processing_seconds = round(time.perf_counter() - started_at, 2)
 
         return {

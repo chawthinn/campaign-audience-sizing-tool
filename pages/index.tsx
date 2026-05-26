@@ -5,6 +5,7 @@ import { VennDiagram } from '@/components/VennDiagram'
 import { FilterPanel } from '@/components/FilterPanel'
 import { ResultsTable } from '@/components/ResultsTable'
 import { ResultsPreview } from '@/components/ResultsPreview'
+import { StatsBar, bumpStats } from '@/components/StatsBar'
 import { useAudienceStore } from '@/lib/store'
 import { buildApiUrl, resolveDownloadUrl } from '@/lib/backend'
 import { useTheme } from '@/lib/theme'
@@ -175,6 +176,7 @@ export default function Home() {
                 jobId: result.jobId,
             })
             setDownloadUrl(resolveDownloadUrl(result.downloadUrl))
+            bumpStats() // refresh the visible analyses-run counter
             if (processingStartRef.current !== null) {
                 setProcessingElapsedSeconds((performance.now() - processingStartRef.current) / 1000)
             }
@@ -330,8 +332,11 @@ export default function Home() {
                     </div>
                 </main>
 
+                {/* Visit + run counter, subtle, above the footer */}
+                <StatsBar />
+
                 {/* Footer */}
-                <footer className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 mt-8">
+                <footer className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4">
                     <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row gap-2 items-center justify-between text-sm text-gray-500 dark:text-slate-400">
                         {/* Left Side */}
                         <span>
