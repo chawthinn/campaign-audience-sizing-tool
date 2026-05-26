@@ -1,6 +1,7 @@
 import React from 'react'
 import type { AppProps } from 'next/app'
 import Head from 'next/head'
+import { Analytics } from '@vercel/analytics/react'
 import '@/styles/globals.css'
 
 // Inline script that runs BEFORE React hydrates, so dark mode applies on first paint
@@ -22,6 +23,7 @@ function App({ Component, pageProps }: AppProps) {
                 <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
             </Head>
             <Component {...pageProps} />
+            <Analytics />
         </>
     )
 }
